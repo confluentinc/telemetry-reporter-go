@@ -1,3 +1,6 @@
+// Package report implements a library that allows
+// us to report metrics by implementing collectors
+// and exporters.
 package report
 
 import (
@@ -8,7 +11,9 @@ import (
 	"go.opencensus.io/stats/view"
 )
 
-// Reporter ...
+// Reporter defines a reporter that will collect metrics
+// from the views and collectors and export them using the
+// exporters.
 type Reporter struct {
 	collectors []*collect.CollectorAgent
 	exporters  []*export.ExporterAgent
@@ -57,7 +62,8 @@ func (r *Reporter) registerViews() {
 	}
 }
 
-// NewReporter ...
+// NewReporter is called to instantiate and start the reporter with
+// the given collectors and exporters.
 func NewReporter(vs []*view.View, config *Config) {
 	reporter := &Reporter{
 		config: config,

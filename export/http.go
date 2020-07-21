@@ -12,7 +12,8 @@ import (
 	"go.opencensus.io/metric/metricdata"
 )
 
-// HTTP ...
+// HTTP is an exporter that exports metrics to an
+// HTTP endpoint
 type HTTP struct {
 	address   string
 	aPIkey    string
@@ -21,7 +22,7 @@ type HTTP struct {
 	config    *Config
 }
 
-// NewHTTP ...
+// NewHTTP returns a new HTTP exporter
 func NewHTTP(address string, apikey string, apisecret string, headers map[string]string, config *Config) HTTP {
 	return HTTP{
 		address:   address,
@@ -32,7 +33,8 @@ func NewHTTP(address string, apikey string, apisecret string, headers map[string
 	}
 }
 
-// ExportMetrics ...
+// ExportMetrics converts the metrics to a metrics service request protobuf and
+// makes a POST request with that payload to an HTTP endpoint.
 func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {

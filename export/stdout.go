@@ -7,19 +7,19 @@ import (
 	"go.opencensus.io/metric/metricdata"
 )
 
-// Stdout ...
+// Stdout is an exporter that exports metrics to stdout.
 type Stdout struct {
 	config *Config
 }
 
-// NewStdout ...
+// NewStdout returns a new Stdout exporter.
 func NewStdout(config *Config) Stdout {
 	return Stdout{
 		config: config,
 	}
 }
 
-// ExportMetrics ...
+// ExportMetrics prints the metrics' names, description, and values.
 func (e Stdout) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
 	for _, d := range data {
 		log.Printf(d.Descriptor.Name)

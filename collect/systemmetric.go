@@ -32,13 +32,14 @@ var collectMap = map[*stats.Float64Measure]float64{
 	cpuPercent: getCPUPercent(),
 }
 
-// SystemMetric ...
+// SystemMetric is a collector that collects specific
+// system metrics such as CPU utilization.
 type SystemMetric struct {
 	config *Config
 }
 
-// NewCollector ...
-func NewCollector() SystemMetric {
+// NewSystemMetricCollector returns a new SystemMetric collector.
+func NewSystemMetricCollector() SystemMetric {
 	return SystemMetric{
 		config: &Config{
 			StatsToCollect: statsList,
@@ -46,7 +47,8 @@ func NewCollector() SystemMetric {
 	}
 }
 
-// Collect ...
+// Collect records measurements for all the configured
+// system metrics.
 func (smc *SystemMetric) Collect() {
 	ctx := context.Background()
 

@@ -1,3 +1,6 @@
+// Package export implements a library to create
+// and define different custom OpenCensus metrics
+// exporters.
 package export
 
 import (
@@ -7,7 +10,8 @@ import (
 	"go.opencensus.io/metric/metricexport"
 )
 
-// ExporterAgent ...
+// ExporterAgent defines the wrapper format of exporters
+// and data needed by all general exporters.
 type ExporterAgent struct {
 	metricexport.Exporter
 	ir             *metricexport.IntervalReader
@@ -15,20 +19,22 @@ type ExporterAgent struct {
 	Config         *Config
 }
 
-// Config ...
+// Config defines the data format of the general
+// configurations of an exporter.
 type Config struct {
 	IncludeFilter     string
 	ReportingPeriodms int
 }
 
-// NewConfig ...
+// NewConfig returns a pointer to a new exporter Config.
 func NewConfig(filter string) *Config {
 	return &Config{
 		IncludeFilter: filter,
 	}
 }
 
-// NewConfigWithReportingPeriod ...
+// NewConfigWithReportingPeriod returns a pointer to a new
+// exporter Config with the specified reporting period.
 func NewConfigWithReportingPeriod(filter string, reportingPeriod int) *Config {
 	return &Config{
 		IncludeFilter:     filter,
@@ -36,7 +42,7 @@ func NewConfigWithReportingPeriod(filter string, reportingPeriod int) *Config {
 	}
 }
 
-// NewExporterAgent ...
+// NewExporterAgent returns a pointer to a new ExporterAgent.
 func NewExporterAgent(e metricexport.Exporter, config *Config) *ExporterAgent {
 	return &ExporterAgent{
 		Exporter: e,
@@ -44,7 +50,8 @@ func NewExporterAgent(e metricexport.Exporter, config *Config) *ExporterAgent {
 	}
 }
 
-// Start ...
+// Start creates the ExporterAgent's IntervalReader (if needed),
+// sets the reporting interval, and then starts the reader.
 func (e *ExporterAgent) Start() error {
 	e.initReaderOnce.Do(func() {
 		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e.Exporter)
@@ -53,7 +60,7 @@ func (e *ExporterAgent) Start() error {
 	return e.ir.Start()
 }
 
-// Stop ...
+// Stop stops the ExporterAgent's interval reader.
 func (e *ExporterAgent) Stop() {
 	e.ir.Stop()
 }

@@ -6,7 +6,8 @@ import (
 	"go.opencensus.io/metric/metricexport"
 )
 
-// Config ...
+// Config defines the data format of the
+// configurations of a reporter.
 type Config struct {
 	CollectingPeriodms int
 	ReportingPeriodms  int
@@ -16,7 +17,7 @@ type Config struct {
 	ExporterConfigs    []*export.Config
 }
 
-// NewConfig returns a new config for a reporter
+// NewConfig returns a pointer to a new reporter Config.
 func NewConfig(
 	reportingPeriodms int,
 	collectors []collect.Collector,
