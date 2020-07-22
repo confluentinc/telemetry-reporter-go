@@ -48,7 +48,7 @@ var (
 
 // configure where to send metrics to
 const (
-	address   = "address<>"
+	address   = "<address>"
 	apikey    = "<api_key>"
 	apisecret = "<api_secret>"
 )
