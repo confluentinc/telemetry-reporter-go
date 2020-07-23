@@ -48,7 +48,7 @@ func metricToDescriptor(m *metricdata.Metric) *v1.MetricDescriptor {
 		Name:        m.Descriptor.Name,
 		Description: m.Descriptor.Description,
 		Unit:        string(m.Descriptor.Unit),
-		Type:        v1.MetricDescriptor_Type(m.Descriptor.Type),
+		Type:        v1.MetricDescriptor_Type(m.Descriptor.Type + 1),
 		LabelKeys:   metricToLabelKeys(m),
 	}
 }
