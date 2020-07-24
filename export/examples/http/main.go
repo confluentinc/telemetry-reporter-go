@@ -62,6 +62,7 @@ func main() {
 
 	exporter := export.NewExporterAgent(http, config)
 	exporter.Start()
+	defer exporter.Stop()
 
 	ctx := context.Background()
 

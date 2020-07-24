@@ -16,39 +16,34 @@ type Kafka struct {
 	config      *Config
 	kafkaConfig *kafka.ConfigMap
 	topic       string
+	producer    *kafka.Producer
 	// partition   int32
 }
 
 // NewKafka returns a new Kafka exporter
 func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topic string) *Kafka {
+	producer, err := kafka.NewProducer(kafkaConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Kafka{
 		config:      config,
 		kafkaConfig: kafkaConfig,
 		topic:       topic,
+		producer:    producer,
 	}
+}
+
+// Stop closes the Kafka producer.
+func (e *Kafka) Stop() {
+	defer e.producer.Close()
 }
 
 // ExportMetrics converts the metrics to a metrics service request protobuf and
 // makes a POST request with that payload to a Kafka broker.
 func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
-	producer, err := kafka.NewProducer(e.kafkaConfig)
-	if err != nil {
-		panic(err)
-	}
-	defer producer.Close()
-
-	go func() {
-		for e := range producer.Events() {
-			switch ev := e.(type) {
-			case *kafka.Message:
-				if ev.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
-				} else {
-					fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
-				}
-			}
-		}
-	}()
+	go handleEvents(e.producer.Events())
 
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
@@ -58,7 +53,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 				panic(err)
 			}
 
-			producer.Produce(&kafka.Message{
+			e.producer.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{
 					Topic:     &e.topic,
 					Partition: kafka.PartitionAny, // or e.partition?
@@ -68,6 +63,19 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 		}
 	}
 
-	producer.Flush(15 * 1000)
+	e.producer.Flush(15 * 1000)
 	return nil
+}
+
+func handleEvents(events chan kafka.Event) {
+	for e := range events {
+		switch ev := e.(type) {
+		case *kafka.Message:
+			if ev.TopicPartition.Error != nil {
+				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+			} else {
+				fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+			}
+		}
+	}
 }

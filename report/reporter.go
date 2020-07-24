@@ -64,7 +64,7 @@ func (r *Reporter) registerViews() {
 
 // NewReporter is called to instantiate and start the reporter with
 // the given collectors and exporters.
-func NewReporter(vs []*view.View, config *Config) {
+func NewReporter(vs []*view.View, config *Config) *Reporter {
 	reporter := &Reporter{
 		config: config,
 		views:  vs,
@@ -74,4 +74,13 @@ func NewReporter(vs []*view.View, config *Config) {
 	reporter.initCollecters()
 	reporter.initExporters()
 	go reporter.startCollect()
+
+	return reporter
+}
+
+// Stop stops the interval readers of the exporters.
+func (r *Reporter) Stop() {
+	for _, metricExporter := range r.exporters {
+		metricExporter.Stop()
+	}
 }

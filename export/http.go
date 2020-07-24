@@ -19,6 +19,7 @@ type HTTP struct {
 	aPIkey    string
 	aPISecret string
 	headerMap map[string]string
+	client    *http.Client
 	config    *Config
 }
 
@@ -31,6 +32,7 @@ func NewHTTP(address string, apikey string, apisecret string, config *Config) HT
 		headerMap: map[string]string{
 			"Content-Type": "application/x-protobuf",
 		},
+		client: &http.Client{},
 		config: config,
 	}
 }
@@ -44,6 +46,7 @@ func NewHTTPWithHeaders(address string, apikey string, apisecret string, headers
 		aPIkey:    apikey,
 		aPISecret: apisecret,
 		headerMap: headers,
+		client:    &http.Client{},
 		config:    config,
 	}
 }
@@ -71,7 +74,6 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 }
 
 func (e HTTP) postMetrics(payload []byte) {
-	client := &http.Client{}
 	req, _ := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
 	req.SetBasicAuth(e.aPIkey, e.aPISecret)
 
@@ -79,7 +81,7 @@ func (e HTTP) postMetrics(payload []byte) {
 		req.Header.Add(headerKey, headerVal)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := e.client.Do(req)
 	if err != nil {
 		panic(err)
 	}
