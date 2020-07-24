@@ -86,6 +86,6 @@ func (e HTTP) postMetrics(payload []byte) {
 		panic(err)
 	}
 
-	fmt.Println(resp)
+	fmt.Println(resp) // What should this be instead?
 	defer resp.Body.Close()
 }

@@ -44,6 +44,6 @@ func TestNewExporterAgent(t *testing.T) {
 	got := NewExporterAgent(NewStdout(config), config)
 
 	if *exporterAgent != *got {
-		t.Errorf("New Exporter Agent failed, expected %v, got %v", *exporterAgent, *got)
+		t.Errorf("New Exporter Agent failed")
 	}
 }
