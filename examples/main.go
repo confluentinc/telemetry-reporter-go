@@ -49,7 +49,8 @@ const (
 	apikey    = "<api_key>"
 	apisecret = "<api_secret>"
 
-	topic = "test"
+	topic           = "test"
+	reportingPeriod = 10000
 )
 
 func main() {
@@ -61,7 +62,7 @@ func main() {
 	exporterConfig := export.NewConfig(`.*`)
 	httpExporter := export.NewHTTP(address, apikey, apisecret, exporterConfig)
 	kafkaExporter := export.NewKafka(exporterConfig, kafkaConfig, topic)
-	reporterConfig := report.NewConfigOnlyExporters(10000, []*export.Config{exporterConfig}, httpExporter, kafkaExporter)
+	reporterConfig := report.NewConfigOnlyExporters(reportingPeriod, []*export.Config{exporterConfig}, httpExporter, kafkaExporter)
 	reporter := report.NewReporter(reporterConfig, metric1View, metric2View)
 	defer reporter.Stop()
 	defer kafkaExporter.Stop()
