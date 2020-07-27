@@ -53,12 +53,14 @@ const (
 	reportingPeriod = 10000
 )
 
-func main() {
-	rand.Seed(time.Now().UTC().UnixNano())
-	kafkaConfig := &kafka.ConfigMap{
+var (
+	kafkaConfig = &kafka.ConfigMap{
 		"bootstrap.servers": "localhost:9092",
 	}
+)
 
+func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	exporterConfig := export.NewConfig(`.*`)
 	httpExporter := export.NewHTTP(address, apikey, apisecret, exporterConfig)
 	kafkaExporter := export.NewKafka(exporterConfig, kafkaConfig, topic)
