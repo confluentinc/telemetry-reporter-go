@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -10,35 +11,27 @@ import (
 	"github.com/confluentinc/telemetry-reporter-go/export"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 )
 
 var (
-	metric1 = stats.Float64("metric1", "first dummy metric for test script for HTTP exporter", "ms")
-	metric2 = stats.Int64("metric2", "second dummy metric for test script for HTTP exporter", "By")
+	metric1 = stats.Float64("metric1", "first dummy metric for test script for Kafka exporter", "ms")
+	metric2 = stats.Int64("metric2", "second dummy metric for test script for Kafka exporter", "By")
 )
 
-// var (
-// 	// KeyMethod ...
-// 	KeyMethod, _ = tag.NewKey("method")
-
-// 	// KeyStatus ...
-// 	KeyStatus, _ = tag.NewKey("status")
-
-// 	// KeyError ...
-// 	KeyError, _ = tag.NewKey("error")
-// )
+var (
+	tag1, _ = tag.NewKey("key")
+)
 
 var (
-	// LatencyView ...
 	metric1View = &view.View{
 		Name:        "view1",
 		Measure:     metric1,
 		Description: "View for dummy metric1",
 		Aggregation: view.LastValue(),
-		// TagKeys:     []tag.Key{KeyMethod}}
+		TagKeys:     []tag.Key{tag1},
 	}
 
-	// LineCountView ...
 	metric2View = &view.View{
 		Name:        "view2",
 		Measure:     metric2,
@@ -63,7 +56,11 @@ func main() {
 	exporter.Start()
 	defer exporter.Stop()
 
-	ctx := context.Background()
+	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
+
+	if err != nil {
+		log.Fatal("Error creating tag: ", err)
+	}
 
 	for {
 		randomFloat := rand.Float64() * 10

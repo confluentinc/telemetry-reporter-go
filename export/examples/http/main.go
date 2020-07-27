@@ -28,7 +28,6 @@ var (
 // )
 
 var (
-	// LatencyView ...
 	metric1View = &view.View{
 		Name:        "view1",
 		Measure:     metric1,
@@ -37,7 +36,6 @@ var (
 		// TagKeys:     []tag.Key{KeyMethod}}
 	}
 
-	// LineCountView ...
 	metric2View = &view.View{
 		Name:        "view2",
 		Measure:     metric2,

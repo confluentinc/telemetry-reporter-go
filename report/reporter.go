@@ -69,7 +69,7 @@ func (r *Reporter) registerViews() {
 
 // NewReporter is called to instantiate and start the reporter with
 // the given collectors and exporters.
-func NewReporter(vs []*view.View, config *Config) *Reporter {
+func NewReporter(config *Config, vs ...*view.View) *Reporter {
 	reporter := &Reporter{
 		config: config,
 		views:  vs,
@@ -78,7 +78,10 @@ func NewReporter(vs []*view.View, config *Config) *Reporter {
 	reporter.registerViews()
 	reporter.initCollecters()
 	reporter.initExporters()
-	go reporter.startCollect()
+
+	if len(reporter.collectors) > 0 {
+		go reporter.startCollect()
+	}
 
 	return reporter
 }
