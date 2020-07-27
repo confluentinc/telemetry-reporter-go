@@ -3,6 +3,7 @@ package export
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -50,16 +51,20 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 			metricsRequestpb := metricToProto(d)
 			payload, err := proto.Marshal(metricsRequestpb)
 			if err != nil {
-				panic(err)
+				log.Fatal("Marshalling Error: ", err)
 			}
 
-			e.producer.Produce(&kafka.Message{
+			err = e.producer.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{
 					Topic:     &e.topic,
 					Partition: kafka.PartitionAny, // or e.partition?
 				},
 				Value: payload,
 			}, nil)
+
+			if err != nil {
+				log.Fatal("Error sending message with Producer: ", err)
+			}
 		}
 	}
 

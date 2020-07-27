@@ -4,6 +4,7 @@
 package report
 
 import (
+	"log"
 	"time"
 
 	"github.com/confluentinc/telemetry-reporter-go/collect"
@@ -31,7 +32,9 @@ func (r *Reporter) initExporters() {
 		}
 
 		exporter := export.NewExporterAgent(metricExporter, r.config.ExporterConfigs[i])
-		exporter.Start()
+		if err := exporter.Start(); err != nil {
+			log.Fatal("Error Starting Exporter: ", err)
+		}
 
 		r.exporters = append(r.exporters, exporter)
 	}
@@ -58,7 +61,9 @@ func (r *Reporter) startCollect() {
 
 func (r *Reporter) registerViews() {
 	for _, v := range r.views {
-		view.Register(v)
+		if err := view.Register(v); err != nil {
+			log.Fatal("Error Registering Views: ", err)
+		}
 	}
 }
 

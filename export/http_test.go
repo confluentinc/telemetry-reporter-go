@@ -102,7 +102,9 @@ func TestExportMetrics(t *testing.T) {
 		config:  config,
 	}
 
-	exportHTTP.ExportMetrics(context.Background(), metrics)
+	if err := exportHTTP.ExportMetrics(context.Background(), metrics); err != nil {
+		t.Errorf("Error Exporting Metrics to HTTP: %e", err)
+	}
 }
 
 func compareHTTP(t *testing.T, want HTTP, got HTTP) {

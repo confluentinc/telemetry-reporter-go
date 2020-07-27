@@ -3,7 +3,6 @@ package export
 import (
 	a1 "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
-	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	"github.com/golang/protobuf/ptypes"
 	"go.opencensus.io/metric/metricdata"
 )
@@ -53,12 +52,12 @@ func metricToDescriptor(m *metricdata.Metric) *v1.MetricDescriptor {
 	}
 }
 
-func metricToResource(m *metricdata.Metric) *r1.Resource {
-	return &r1.Resource{
-		Type:   m.Resource.Type,
-		Labels: m.Resource.Labels,
-	}
-}
+// func metricToResource(m *metricdata.Metric) *r1.Resource {
+// 	return &r1.Resource{
+// 		Type:   m.Resource.Type,
+// 		Labels: m.Resource.Labels,
+// 	}
+// }
 
 func metricToTimeSeries(m *metricdata.Metric) []*v1.TimeSeries {
 	timeSeries := []*v1.TimeSeries{}
