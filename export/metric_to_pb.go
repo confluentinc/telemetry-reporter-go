@@ -4,6 +4,7 @@ import (
 	a1 "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.opencensus.io/metric/metricdata"
 )
 
@@ -110,7 +111,11 @@ func metricToPoints(t *metricdata.TimeSeries) []*v1.Point {
 			toAppend.Value = &v1.Point_DoubleValue{
 				DoubleValue: v,
 			}
-		// TODO Distribution and Summary Value
+		case *metricdata.Summary:
+			toAppend.Value = &v1.Point_SummaryValue{
+				SummaryValue: pointToSummaryValue(v),
+			}
+		// TODO Distribution
 		default:
 			panic("unsupported value type")
 		}
@@ -119,4 +124,33 @@ func metricToPoints(t *metricdata.TimeSeries) []*v1.Point {
 	}
 
 	return points
+}
+
+func pointToSummaryValue(value *metricdata.Summary) *v1.SummaryValue {
+	return &v1.SummaryValue{
+		Count:    &wrappers.Int64Value{Value: value.Count},
+		Sum:      &wrappers.DoubleValue{Value: value.Sum},
+		Snapshot: summaryValToSnapshot(value),
+	}
+}
+
+func summaryValToSnapshot(summary *metricdata.Summary) *v1.SummaryValue_Snapshot {
+	snapshot := &v1.SummaryValue_Snapshot{}
+
+	if summary.HasCountAndSum {
+		snapshot.Count = &wrappers.Int64Value{Value: summary.Snapshot.Count}
+		snapshot.Sum = &wrappers.DoubleValue{Value: summary.Snapshot.Sum}
+	}
+
+	percentileValues := []*v1.SummaryValue_Snapshot_ValueAtPercentile{}
+	for percentile, val := range summary.Snapshot.Percentiles {
+		toAppend := &v1.SummaryValue_Snapshot_ValueAtPercentile{
+			Percentile: percentile,
+			Value:      val,
+		}
+		percentileValues = append(percentileValues, toAppend)
+	}
+
+	snapshot.PercentileValues = percentileValues
+	return snapshot
 }
