@@ -1,15 +1,10 @@
 package export
 
 import (
-	"bytes"
-	"context"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
 	"go.opencensus.io/metric/metricdata"
 )
 
@@ -79,33 +74,33 @@ func TestNewHTTPWithHeaders(t *testing.T) {
 	compareHTTP(t, dummyHTTPWithHeader, got)
 }
 
-func TestExportMetrics(t *testing.T) {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		got, _ := ioutil.ReadAll(r.Body)
-		want, err := proto.Marshal(metricsToServiceRequest(metrics))
-		if err != nil {
-			log.Fatal("Marshalling error: ", err)
-		}
+// func TestExportMetrics(t *testing.T) {
+// 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 		got, _ := ioutil.ReadAll(r.Body)
+// 		want, err := proto.Marshal(metricsToServiceRequest(metrics))
+// 		if err != nil {
+// 			log.Fatal("Marshalling error: ", err)
+// 		}
 
-		if res := bytes.Compare(got, want); res != 0 {
-			t.Errorf("Metrics export failed, expected %v, got %v", want, got)
-		}
-	})
+// 		if res := bytes.Compare(got, want); res != 0 {
+// 			t.Errorf("Metrics export failed, expected %v, got %v", want, got)
+// 		}
+// 	})
 
-	go func() {
-		log.Fatal(http.ListenAndServe(":8081", nil))
-	}()
+// 	go func() {
+// 		log.Fatal(http.ListenAndServe(":8081", nil))
+// 	}()
 
-	exportHTTP := HTTP{
-		address: "http://localhost:8081",
-		client:  &http.Client{},
-		config:  config,
-	}
+// 	exportHTTP := HTTP{
+// 		address: "http://localhost:8081",
+// 		client:  &http.Client{},
+// 		config:  config,
+// 	}
 
-	if err := exportHTTP.ExportMetrics(context.Background(), metrics); err != nil {
-		t.Errorf("Error Exporting Metrics to HTTP: %e", err)
-	}
-}
+// 	if err := exportHTTP.ExportMetrics(context.Background(), metrics); err != nil {
+// 		t.Errorf("Error Exporting Metrics to HTTP: %e", err)
+// 	}
+// }
 
 func compareHTTP(t *testing.T, want HTTP, got HTTP) {
 	if want.address != got.address {
