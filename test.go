@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
-func printStuff() {
+// PrintStuff ...
+func PrintStuff() {
 	fmt.Println("This worked")
 }
