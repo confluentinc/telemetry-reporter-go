@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
 )
 
 var (
@@ -15,18 +14,18 @@ var (
 	}
 )
 
-var (
-	cpuPercentView = &view.View{
-		Name:        "cpuPercentView",
-		Measure:     cpuPercent,
-		Description: "view for cpuPercent",
-		Aggregation: view.LastValue(),
-	}
+// var (
+// 	cpuPercentView = &view.View{
+// 		Name:        "cpuPercentView",
+// 		Measure:     cpuPercent,
+// 		Description: "view for cpuPercent",
+// 		Aggregation: view.LastValue(),
+// 	}
 
-	// viewList = []*view.View{
-	// 	cpuPercentView,
-	// }
-)
+// 	viewList = []*view.View{
+// 		cpuPercentView,
+// 	}
+// )
 
 var collectMap = map[*stats.Float64Measure]float64{
 	cpuPercent: getCPUPercent(),
