@@ -7,8 +7,8 @@ import (
 	"regexp"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/golang/protobuf/proto"
 	"go.opencensus.io/metric/metricdata"
+	"google.golang.org/protobuf/proto"
 )
 
 // Kafka is an exporter that exports metrics to a

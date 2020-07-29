@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/golang/protobuf/proto"
 	"go.opencensus.io/metric/metricdata"
+	"google.golang.org/protobuf/proto"
 )
 
 // HTTP is an exporter that exports metrics to an

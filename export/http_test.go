@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"go.opencensus.io/metric/metricdata"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
