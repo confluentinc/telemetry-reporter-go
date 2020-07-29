@@ -23,9 +23,9 @@ var (
 		Aggregation: view.LastValue(),
 	}
 
-	viewList = []*view.View{
-		cpuPercentView,
-	}
+	// viewList = []*view.View{
+	// 	cpuPercentView,
+	// }
 )
 
 var collectMap = map[*stats.Float64Measure]float64{
