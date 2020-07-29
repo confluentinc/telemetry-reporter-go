@@ -7,7 +7,7 @@ import (
 	"regexp"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"go.opencensus.io/metric/metricdata"
 )
 
