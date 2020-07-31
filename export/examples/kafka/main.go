@@ -49,7 +49,10 @@ func main() {
 	}
 
 	config := export.NewConfigWithReportingPeriod(`.*`, 10000)
-	kafkaExporter := export.NewKafka(config, kafkaConfig, "_confluent-telemetry-metrics")
+	topicInfo := export.TopicConfig{
+		Topic: "test",
+	}
+	kafkaExporter := export.NewKafka(config, kafkaConfig, topicInfo)
 	defer kafkaExporter.Stop()
 
 	exporter := export.NewExporterAgent(kafkaExporter, config)

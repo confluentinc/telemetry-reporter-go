@@ -4,25 +4,36 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/resource"
 	"google.golang.org/protobuf/proto"
 )
+
+// TopicConfig holds the configurations for Topic info
+type TopicConfig struct {
+	Topic         string
+	NumPartitions int
+	NumReplicas   int
+}
 
 // Kafka is an exporter that exports metrics to a
 // Kafka broker.
 type Kafka struct {
 	config      *Config
 	kafkaConfig *kafka.ConfigMap
-	topic       string
 	producer    *kafka.Producer
-	// partition   int32
+	topicInfo   TopicConfig
 }
 
 // NewKafka returns a new Kafka exporter
-func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topic string) *Kafka {
+func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *Kafka {
+	createTopic(topicInfo, kafkaConfig)
+
 	producer, err := kafka.NewProducer(kafkaConfig)
 	if err != nil {
 		panic(err)
@@ -31,9 +42,57 @@ func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topic string) *Kafka
 	return &Kafka{
 		config:      config,
 		kafkaConfig: kafkaConfig,
-		topic:       topic,
+		topicInfo:   topicInfo,
 		producer:    producer,
 	}
+}
+
+func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
+	adminClient, err := kafka.NewAdminClient(kafkaConfig)
+	if err != nil {
+		fmt.Printf("Failed to create Admin client: %s\n", err)
+		os.Exit(1)
+	}
+
+	// Contexts are used to abort or limit the amount of time
+	// the Admin call blocks waiting for a result.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create topics on cluster.
+	// Set Admin options to wait for the operation to finish (or at most 60s)
+	maxDuration, err := time.ParseDuration("60s")
+	if err != nil {
+		panic("time.ParseDuration(60s)")
+	}
+
+	if topicInfo.NumPartitions != 0 && topicInfo.NumReplicas != 0 {
+		results, err := adminClient.CreateTopics(ctx,
+			[]kafka.TopicSpecification{{
+				Topic:             topicInfo.Topic,
+				NumPartitions:     topicInfo.NumPartitions,
+				ReplicationFactor: topicInfo.NumReplicas,
+			}},
+			kafka.SetAdminOperationTimeout(maxDuration))
+
+		if err != nil {
+			fmt.Printf("Problem during the topic creation: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Check for specific topic errors
+		for _, result := range results {
+			if result.Error.Code() != kafka.ErrNoError &&
+				result.Error.Code() != kafka.ErrTopicAlreadyExists {
+				fmt.Printf("Topic creation failed for %s: %v",
+					result.Topic, result.Error.String())
+				os.Exit(1)
+			}
+		}
+	}
+
+	adminClient.Close()
+
 }
 
 // Stop closes the Kafka producer.
@@ -48,6 +107,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
+			d.Resource, _ = resource.FromEnv(context.Background())
 			metricsRequestpb := metricToProto(d)
 			payload, err := proto.Marshal(metricsRequestpb)
 			if err != nil {
@@ -56,7 +116,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 
 			err = e.producer.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{
-					Topic:     &e.topic,
+					Topic:     &e.topicInfo.Topic,
 					Partition: kafka.PartitionAny, // or e.partition?
 				},
 				Value: payload,

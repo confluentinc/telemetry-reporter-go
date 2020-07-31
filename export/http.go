@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -58,6 +59,7 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
+			d.Resource, _ = resource.FromEnv(context.Background())
 			includeData = append(includeData, d)
 		}
 	}

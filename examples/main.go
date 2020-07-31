@@ -62,8 +62,9 @@ var (
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	exporterConfig := export.NewConfig(`.*`)
+	topicInfo := export.TopicConfig{Topic: "test"}
 	httpExporter := export.NewHTTP(address, apikey, apisecret, exporterConfig)
-	kafkaExporter := export.NewKafka(exporterConfig, kafkaConfig, topic)
+	kafkaExporter := export.NewKafka(exporterConfig, kafkaConfig, topicInfo)
 	reporterConfig := report.NewConfigOnlyExporters(reportingPeriod, []*export.Config{exporterConfig}, httpExporter, kafkaExporter)
 	reporter := report.NewReporter(reporterConfig, metric1View, metric2View)
 	defer reporter.Stop()

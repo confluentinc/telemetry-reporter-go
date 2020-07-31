@@ -14,15 +14,19 @@ var (
 		"bootstrap.servers": "localhost:9092",
 	}
 
+	topicInfo = TopicConfig{
+		Topic: topicName,
+	}
+
 	kafkaExporter = &Kafka{
 		config:      config,
 		kafkaConfig: kafkaConfig,
-		topic:       topicName,
+		topicInfo:   topicInfo,
 	}
 )
 
 func TestNewKafka(t *testing.T) {
-	got := NewKafka(config, kafkaConfig, topicName)
+	got := NewKafka(config, kafkaConfig, topicInfo)
 	defer got.Stop()
 
 	if *kafkaExporter.config != *got.config {
@@ -33,7 +37,7 @@ func TestNewKafka(t *testing.T) {
 		t.Fatalf("New Kafka failed, expected kafka config %v, got %v", kafkaExporter.kafkaConfig, got.kafkaConfig)
 	}
 
-	if kafkaExporter.topic != got.topic {
-		t.Fatalf("New Kafka failed, expected topic %v, got %v", kafkaExporter.topic, got.topic)
+	if kafkaExporter.topicInfo.Topic != got.topicInfo.Topic {
+		t.Fatalf("New Kafka failed, expected topic %v, got %v", kafkaExporter.topicInfo.Topic, got.topicInfo.Topic)
 	}
 }
