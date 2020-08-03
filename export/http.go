@@ -38,7 +38,10 @@ func NewHTTP(address string, apikey string, apisecret string, headers map[string
 	}
 
 	agent := newExporterAgent(exporter)
-	agent.Start(exporter.config.ReportingPeriodms)
+	if err := agent.Start(exporter.config.ReportingPeriodms); err != nil {
+		panic(err)
+	}
+
 	return agent
 
 }

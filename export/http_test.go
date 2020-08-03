@@ -26,17 +26,6 @@ var (
 		address:   address,
 		aPIkey:    aPIKey,
 		aPISecret: aPISecret,
-		headerMap: map[string]string{
-			"Content-Type": "application/x-protobuf",
-		},
-		client: &http.Client{},
-		config: config,
-	}
-
-	dummyHTTPWithHeader = HTTP{
-		address:   address,
-		aPIkey:    aPIKey,
-		aPISecret: aPISecret,
 		headerMap: headerMap,
 		client:    &http.Client{},
 		config:    config,
@@ -70,7 +59,7 @@ var (
 )
 
 func TestNewHTTP(t *testing.T) {
-	got := NewHTTP(address, aPIKey, aPISecret, map[string]string{}, config)
+	got := NewHTTP(address, aPIKey, aPISecret, map[string]string{"key": "val"}, config)
 	defer got.Stop()
 
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))

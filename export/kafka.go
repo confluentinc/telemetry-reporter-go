@@ -47,7 +47,10 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 	}
 
 	agent := newExporterAgent(kafka)
-	agent.Start(kafka.config.ReportingPeriodms)
+	if err := agent.Start(kafka.config.ReportingPeriodms); err != nil {
+		panic(err)
+	}
+
 	return kafka, agent
 }
 
