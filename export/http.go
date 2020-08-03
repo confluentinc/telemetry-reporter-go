@@ -21,28 +21,14 @@ type HTTP struct {
 	aPISecret string
 	headerMap map[string]string
 	client    *http.Client
-	config    *Config
+	config    Config
 }
 
-// NewHTTP returns a new HTTP exporter
-func NewHTTP(address string, apikey string, apisecret string, config *Config) HTTP {
-	return HTTP{
-		address:   address,
-		aPIkey:    apikey,
-		aPISecret: apisecret,
-		headerMap: map[string]string{
-			"Content-Type": "application/x-protobuf",
-		},
-		client: &http.Client{},
-		config: config,
-	}
-}
-
-// NewHTTPWithHeaders returns a new HTTP exporter with the corresponding headers to be used
-func NewHTTPWithHeaders(address string, apikey string, apisecret string, headers map[string]string, config *Config) HTTP {
+// NewHTTP returns a new exporter agent with an HTTP exporter attached
+func NewHTTP(address string, apikey string, apisecret string, headers map[string]string, config Config) *ExporterAgent {
 	headers["Content-Type"] = "application/x-protobuf"
 
-	return HTTP{
+	exporter := HTTP{
 		address:   address,
 		aPIkey:    apikey,
 		aPISecret: apisecret,
@@ -50,6 +36,11 @@ func NewHTTPWithHeaders(address string, apikey string, apisecret string, headers
 		client:    &http.Client{},
 		config:    config,
 	}
+
+	agent := newExporterAgent(exporter)
+	agent.Start(exporter.config.ReportingPeriodms)
+	return agent
+
 }
 
 // ExportMetrics converts the metrics to a metrics service request protobuf and
@@ -59,7 +50,7 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
-			d.Resource, _ = resource.FromEnv(context.Background())
+			d.Resource, _ = resource.FromEnv(ctx)
 			includeData = append(includeData, d)
 		}
 	}

@@ -9,11 +9,11 @@ import (
 
 // Stdout is an exporter that exports metrics to stdout.
 type Stdout struct {
-	config *Config
+	config Config
 }
 
 // NewStdout returns a new Stdout exporter.
-func NewStdout(config *Config) Stdout {
+func NewStdout(config Config) Stdout {
 	return Stdout{
 		config: config,
 	}

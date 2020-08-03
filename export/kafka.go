@@ -24,14 +24,14 @@ type TopicConfig struct {
 // Kafka is an exporter that exports metrics to a
 // Kafka broker.
 type Kafka struct {
-	config      *Config
+	config      Config
 	kafkaConfig *kafka.ConfigMap
 	producer    *kafka.Producer
 	topicInfo   TopicConfig
 }
 
 // NewKafka returns a new Kafka exporter
-func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *Kafka {
+func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) (*Kafka, *ExporterAgent) {
 	createTopic(topicInfo, kafkaConfig)
 
 	producer, err := kafka.NewProducer(kafkaConfig)
@@ -39,12 +39,16 @@ func NewKafka(config *Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfi
 		panic(err)
 	}
 
-	return &Kafka{
+	kafka := &Kafka{
 		config:      config,
 		kafkaConfig: kafkaConfig,
 		topicInfo:   topicInfo,
 		producer:    producer,
 	}
+
+	agent := newExporterAgent(kafka)
+	agent.Start(kafka.config.ReportingPeriodms)
+	return kafka, agent
 }
 
 func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
@@ -107,7 +111,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
-			d.Resource, _ = resource.FromEnv(context.Background())
+			d.Resource, _ = resource.FromEnv(ctx)
 			metricsRequestpb := metricToProto(d)
 			payload, err := proto.Marshal(metricsRequestpb)
 			if err != nil {

@@ -48,16 +48,13 @@ func main() {
 		"bootstrap.servers": "localhost:9092",
 	}
 
-	config := export.NewConfigWithReportingPeriod(`.*`, 10000)
+	config := export.NewConfig(`.*`, 10000)
 	topicInfo := export.TopicConfig{
 		Topic: "test",
 	}
-	kafkaExporter := export.NewKafka(config, kafkaConfig, topicInfo)
+	kafkaExporter, agent := export.NewKafka(config, kafkaConfig, topicInfo)
 	defer kafkaExporter.Stop()
-
-	exporter := export.NewExporterAgent(kafkaExporter, config)
-	exporter.Start()
-	defer exporter.Stop()
+	defer agent.Stop()
 
 	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
 

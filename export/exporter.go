@@ -16,7 +16,6 @@ type ExporterAgent struct {
 	metricexport.Exporter
 	ir             *metricexport.IntervalReader
 	initReaderOnce sync.Once
-	Config         *Config
 }
 
 // Config defines the data format of the general
@@ -26,37 +25,29 @@ type Config struct {
 	ReportingPeriodms int
 }
 
-// NewConfig returns a pointer to a new exporter Config.
-func NewConfig(filter string) *Config {
-	return &Config{
-		IncludeFilter: filter,
-	}
-}
-
-// NewConfigWithReportingPeriod returns a pointer to a new
-// exporter Config with the specified reporting period.
-func NewConfigWithReportingPeriod(filter string, reportingPeriod int) *Config {
-	return &Config{
+// NewConfig returns a new exporter Config.
+func NewConfig(filter string, reportingPeriod int) Config {
+	return Config{
 		IncludeFilter:     filter,
 		ReportingPeriodms: reportingPeriod,
 	}
 }
 
-// NewExporterAgent returns a pointer to a new ExporterAgent.
-func NewExporterAgent(e metricexport.Exporter, config *Config) *ExporterAgent {
+// a user should never have to use this explicitly. They would
+// simply instantiate an implemented exporter
+func newExporterAgent(exporter metricexport.Exporter) *ExporterAgent {
 	return &ExporterAgent{
-		Exporter: e,
-		Config:   config,
+		Exporter: exporter,
 	}
 }
 
 // Start creates the ExporterAgent's IntervalReader (if needed),
 // sets the reporting interval, and then starts the reader.
-func (e *ExporterAgent) Start() error {
+func (e *ExporterAgent) Start(reportingPeriodms int) error {
 	e.initReaderOnce.Do(func() {
 		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e.Exporter)
 	})
-	e.ir.ReportingInterval = time.Duration(e.Config.ReportingPeriodms) * time.Millisecond
+	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Millisecond
 	return e.ir.Start()
 }
 

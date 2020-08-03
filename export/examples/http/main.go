@@ -55,12 +55,9 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	view.Register(metric1View, metric2View)
 
-	config := export.NewConfigWithReportingPeriod(`.*`, 10000)
-	http := export.NewHTTP(address, apikey, apisecret, config)
-
-	exporter := export.NewExporterAgent(http, config)
-	exporter.Start()
-	defer exporter.Stop()
+	config := export.NewConfig(`.*`, 10000)
+	http := export.NewHTTP(address, apikey, apisecret, map[string]string{}, config)
+	defer http.Stop()
 
 	ctx := context.Background()
 

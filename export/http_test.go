@@ -70,13 +70,10 @@ var (
 )
 
 func TestNewHTTP(t *testing.T) {
-	got := NewHTTP(address, aPIKey, aPISecret, config)
-	compareHTTP(t, dummyHTTP, got)
-}
+	got := NewHTTP(address, aPIKey, aPISecret, map[string]string{}, config)
+	defer got.Stop()
 
-func TestNewHTTPWithHeaders(t *testing.T) {
-	got := NewHTTPWithHeaders(address, aPIKey, aPISecret, headerMap, config)
-	compareHTTP(t, dummyHTTPWithHeader, got)
+	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))
 }
 
 func TestExportMetrics(t *testing.T) {
@@ -128,7 +125,7 @@ func compareHTTP(t *testing.T, want HTTP, got HTTP) {
 		t.Errorf("New HTTP failed, expected client %v, got %v", *want.client, *got.client)
 	}
 
-	if *want.config != *got.config {
+	if want.config != got.config {
 		t.Errorf("New HTTP failed, expected config %v, got %v", want.config, got.config)
 	}
 }
