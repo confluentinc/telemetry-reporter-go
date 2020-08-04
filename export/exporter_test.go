@@ -6,7 +6,7 @@ import (
 
 var (
 	dummyIncludeFilter   = `.*`
-	dummyReportingPeriod = 1000
+	dummyReportingPeriod = 1
 
 	config = Config{
 		IncludeFilter:     dummyIncludeFilter,

@@ -2,60 +2,75 @@ package collect
 
 import (
 	"context"
+	"runtime"
+	"time"
 
 	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 )
 
 var (
-	cpuPercent = stats.Float64("cpuPercent", "CPU % being utilized", "1")
+	alloc = stats.Int64("alloc", "bytes of allocated heap objects", "by")
 
-	statsList = []*stats.Float64Measure{
-		cpuPercent,
+	statsList = []*stats.Int64Measure{
+		alloc,
 	}
 )
 
-// var (
-// 	cpuPercentView = &view.View{
-// 		Name:        "cpuPercentView",
-// 		Measure:     cpuPercent,
-// 		Description: "view for cpuPercent",
-// 		Aggregation: view.LastValue(),
-// 	}
+var (
+	cpuPercentView = &view.View{
+		Name:        "allocView",
+		Measure:     alloc,
+		Description: "view for allocated bytes",
+		Aggregation: view.LastValue(),
+	}
 
-// 	viewList = []*view.View{
-// 		cpuPercentView,
-// 	}
-// )
-
-var collectMap = map[*stats.Float64Measure]float64{
-	cpuPercent: getCPUPercent(),
-}
+	viewList = []*view.View{
+		cpuPercentView,
+	}
+)
 
 // SystemMetric is a collector that collects specific
 // system metrics such as CPU utilization.
 type SystemMetric struct {
-	config Config
+	memStats runtime.MemStats
+	config   Config
 }
 
 // NewSystemMetricCollector returns a new SystemMetric collector.
-func NewSystemMetricCollector() SystemMetric {
-	return SystemMetric{
-		config: Config{
-			StatsToCollect: statsList,
-		},
+func NewSystemMetricCollector(filter string, collectPeriodms int) SystemMetric {
+	smc := SystemMetric{
+		memStats: runtime.MemStats{},
+		config:   NewConfig(filter, collectPeriodms),
 	}
+
+	for _, v := range viewList {
+		view.Register(v)
+	}
+
+	go smc.Collect()
+	return smc
 }
 
 // Collect records measurements for all the configured
 // system metrics.
 func (smc *SystemMetric) Collect() {
-	ctx := context.Background()
+	for true {
+		ctx := context.Background()
+		runtime.ReadMemStats(&smc.memStats)
+		collectMap := map[*stats.Int64Measure]uint64{
+			alloc: smc.getAlloc(),
+		}
 
-	for _, metric := range smc.config.StatsToCollect {
-		stats.Record(ctx, metric.M(collectMap[metric]))
+		for _, metric := range statsList {
+			stats.Record(ctx, metric.M(int64(collectMap[metric])))
+		}
+
+		time.Sleep(time.Duration(smc.config.CollectPeriodms) * time.Minute)
 	}
+
 }
 
-func getCPUPercent() float64 {
-	return 32.4
+func (smc *SystemMetric) getAlloc() uint64 {
+	return smc.memStats.Alloc
 }

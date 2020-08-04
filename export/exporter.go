@@ -47,7 +47,7 @@ func (e *ExporterAgent) Start(reportingPeriodms int) error {
 	e.initReaderOnce.Do(func() {
 		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e.Exporter)
 	})
-	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Millisecond
+	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Minute	
 	return e.ir.Start()
 }
 
