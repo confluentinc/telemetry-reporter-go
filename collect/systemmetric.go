@@ -18,7 +18,7 @@ var (
 )
 
 var (
-	cpuPercentView = &view.View{
+	allocView = &view.View{
 		Name:        "allocView",
 		Measure:     alloc,
 		Description: "view for allocated bytes",
@@ -26,7 +26,7 @@ var (
 	}
 
 	viewList = []*view.View{
-		cpuPercentView,
+		allocView,
 	}
 )
 
