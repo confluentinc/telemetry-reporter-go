@@ -45,7 +45,9 @@ func NewSystemMetricCollector(filter string, collectPeriodms int) SystemMetric {
 	}
 
 	for _, v := range viewList {
-		view.Register(v)
+		if err := view.Register(v); err != nil {
+			panic(err)
+		}
 	}
 
 	go smc.Collect()
@@ -55,7 +57,7 @@ func NewSystemMetricCollector(filter string, collectPeriodms int) SystemMetric {
 // Collect records measurements for all the configured
 // system metrics.
 func (smc *SystemMetric) Collect() {
-	for true {
+	for {
 		ctx := context.Background()
 		runtime.ReadMemStats(&smc.memStats)
 		collectMap := map[*stats.Int64Measure]uint64{
