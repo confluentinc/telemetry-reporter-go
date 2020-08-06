@@ -15,8 +15,8 @@ import (
 
 var (
 	address   = ""
-	aPIKey    = ""
-	aPISecret = ""
+	apiKey    = ""
+	apiSecret = ""
 	headerMap = map[string]string{
 		"Content-Type": "application/x-protobuf",
 		"key":          "val",
@@ -24,8 +24,8 @@ var (
 
 	dummyHTTP = HTTP{
 		address:   address,
-		aPIkey:    aPIKey,
-		aPISecret: aPISecret,
+		apiKey:    apiKey,
+		apiSecret: apiSecret,
 		headerMap: headerMap,
 		client:    &http.Client{},
 		config:    config,
@@ -59,7 +59,7 @@ var (
 )
 
 func TestNewHTTP(t *testing.T) {
-	got := NewHTTP(address, aPIKey, aPISecret, map[string]string{"key": "val"}, config)
+	got := NewHTTP(address, apiKey, apiSecret, map[string]string{"key": "val"}, config)
 	defer got.Stop()
 
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))
@@ -98,12 +98,12 @@ func compareHTTP(t *testing.T, want HTTP, got HTTP) {
 		t.Errorf("New HTTP failed, expected address %v, got %v", want.address, got.address)
 	}
 
-	if want.aPIkey != got.aPIkey {
-		t.Errorf("New HTTP failed, expected key %v, got %v", want.aPIkey, got.aPIkey)
+	if want.apiKey != got.apiKey {
+		t.Errorf("New HTTP failed, expected key %v, got %v", want.apiKey, got.apiKey)
 	}
 
-	if want.aPISecret != got.aPISecret {
-		t.Errorf("New HTTP failed, expected secret %v, got %v", want.aPISecret, got.aPISecret)
+	if want.apiSecret != got.apiSecret {
+		t.Errorf("New HTTP failed, expected secret %v, got %v", want.apiSecret, got.apiSecret)
 	}
 
 	if eq := reflect.DeepEqual(want.headerMap, got.headerMap); !eq {

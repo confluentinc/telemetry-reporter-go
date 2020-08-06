@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
 	"github.com/confluentinc/telemetry-reporter-go/export"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 )
 
 var (
@@ -16,16 +18,9 @@ var (
 	metric2 = stats.Int64("metric2", "second dummy metric for test script for HTTP exporter", "By")
 )
 
-// var (
-// 	// KeyMethod ...
-// 	KeyMethod, _ = tag.NewKey("method")
-
-// 	// KeyStatus ...
-// 	KeyStatus, _ = tag.NewKey("status")
-
-// 	// KeyError ...
-// 	KeyError, _ = tag.NewKey("error")
-// )
+var (
+	tag1, _ = tag.NewKey("key")
+)
 
 var (
 	metric1View = &view.View{
@@ -33,7 +28,7 @@ var (
 		Measure:     metric1,
 		Description: "View for dummy metric1",
 		Aggregation: view.LastValue(),
-		// TagKeys:     []tag.Key{KeyMethod}}
+		TagKeys:     []tag.Key{tag1},
 	}
 
 	metric2View = &view.View{
@@ -59,7 +54,11 @@ func main() {
 	http := export.NewHTTP(address, apikey, apisecret, map[string]string{}, config)
 	defer http.Stop()
 
-	ctx := context.Background()
+	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
+
+	if err != nil {
+		log.Fatal("Error creating tag: ", err)
+	}
 
 	for {
 		randomFloat := rand.Float64() * 10

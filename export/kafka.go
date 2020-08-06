@@ -24,10 +24,12 @@ type TopicConfig struct {
 // Kafka is an exporter that exports metrics to a
 // Kafka broker.
 type Kafka struct {
-	config      Config
-	kafkaConfig *kafka.ConfigMap
-	producer    *kafka.Producer
-	topicInfo   TopicConfig
+	config              Config
+	kafkaConfig         *kafka.ConfigMap
+	producer            *kafka.Producer
+	topicInfo           TopicConfig
+	messageFlushTimeSec int
+	lastDroppedLogCount int
 }
 
 // NewKafka returns a new Kafka exporter
@@ -40,14 +42,16 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 	}
 
 	kafka := &Kafka{
-		config:      config,
-		kafkaConfig: kafkaConfig,
-		topicInfo:   topicInfo,
-		producer:    producer,
+		config:              config,
+		kafkaConfig:         kafkaConfig,
+		topicInfo:           topicInfo,
+		producer:            producer,
+		lastDroppedLogCount: 0,
+		messageFlushTimeSec: 15,
 	}
 
 	agent := newExporterAgent(kafka)
-	if err := agent.Start(kafka.config.ReportingPeriodms); err != nil {
+	if err := agent.Start(kafka.config.ReportingPeriodmins); err != nil {
 		panic(err)
 	}
 
@@ -107,6 +111,12 @@ func (e *Kafka) Stop() {
 	defer e.producer.Close()
 }
 
+// SetMessageFlushTime sets the time to wait to flush the
+// Kafka message buffer. Default is 15 seconds
+func (e *Kafka) SetMessageFlushTime(seconds int) {
+	e.messageFlushTimeSec = seconds
+}
+
 // ExportMetrics converts the metrics to a metrics service request protobuf and
 // makes a POST request with that payload to a Kafka broker.
 func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
@@ -124,7 +134,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 			err = e.producer.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{
 					Topic:     &e.topicInfo.Topic,
-					Partition: kafka.PartitionAny, // or e.partition?
+					Partition: kafka.PartitionAny,
 				},
 				Value: payload,
 			}, nil)
@@ -135,7 +145,14 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 		}
 	}
 
-	e.producer.Flush(15 * 1000)
+	droppedCount := e.producer.Flush(e.messageFlushTimeSec * 1000)
+	droppedDelta := droppedCount - e.lastDroppedLogCount
+	if droppedDelta > 0 {
+		log.Println("Failed to produce %i metrics messages", droppedDelta)
+	}
+
+	e.lastDroppedLogCount = droppedCount
+
 	return nil
 }
 

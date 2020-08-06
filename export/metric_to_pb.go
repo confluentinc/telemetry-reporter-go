@@ -49,9 +49,19 @@ func metricToDescriptor(m *metricdata.Metric) *v1.MetricDescriptor {
 		Name:        m.Descriptor.Name,
 		Description: m.Descriptor.Description,
 		Unit:        string(m.Descriptor.Unit),
-		Type:        v1.MetricDescriptor_Type(m.Descriptor.Type + 1),
+		Type:        metricdataTypetoProtoType(m.Descriptor.Type),
 		LabelKeys:   metricToLabelKeys(m),
 	}
+}
+
+/*
+We need this function since OpenCensus Metric Enum types are offset by one in
+the protobuf format
+see https://github.com/census-instrumentation/opencensus-go/blob/master/metric/metricdata/point.go#L185-L193
+and https://github.com/census-instrumentation/opencensus-proto/blob/master/gen-go/metrics/v1/metrics.pb.go#L61-L89
+*/
+func metricdataTypetoProtoType(metricType metricdata.Type) v1.MetricDescriptor_Type {
+	return v1.MetricDescriptor_Type(metricType + 1)
 }
 
 func metricToResource(m *metricdata.Metric) *r1.Resource {

@@ -3,7 +3,6 @@ package export
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -17,28 +16,28 @@ import (
 // HTTP endpoint
 type HTTP struct {
 	address   string
-	aPIkey    string
-	aPISecret string
+	apiKey    string
+	apiSecret string
 	headerMap map[string]string
 	client    *http.Client
 	config    Config
 }
 
 // NewHTTP returns a new exporter agent with an HTTP exporter attached
-func NewHTTP(address string, apikey string, apisecret string, headers map[string]string, config Config) *ExporterAgent {
-	headers["Content-Type"] = "application/x-protobuf"
+func NewHTTP(address string, apiKey string, apiSecret string, headerMap map[string]string, config Config) *ExporterAgent {
+	headerMap["Content-Type"] = "application/x-protobuf"
 
 	exporter := HTTP{
 		address:   address,
-		aPIkey:    apikey,
-		aPISecret: apisecret,
-		headerMap: headers,
+		apiKey:    apiKey,
+		apiSecret: apiSecret,
+		headerMap: headerMap,
 		client:    &http.Client{},
 		config:    config,
 	}
 
 	agent := newExporterAgent(exporter)
-	if err := agent.Start(exporter.config.ReportingPeriodms); err != nil {
+	if err := agent.Start(exporter.config.ReportingPeriodmins); err != nil {
 		panic(err)
 	}
 
@@ -58,8 +57,8 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 		}
 	}
 
-	metricsRequestpb := metricsToServiceRequest(includeData)
-	payload, err := proto.Marshal(metricsRequestpb)
+	metricsRequestProto := metricsToServiceRequest(includeData)
+	payload, err := proto.Marshal(metricsRequestProto)
 	if err != nil {
 		log.Fatal("Marshalling error: ", err)
 	}
@@ -71,7 +70,7 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 
 func (e HTTP) postMetrics(payload []byte) {
 	req, _ := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
-	req.SetBasicAuth(e.aPIkey, e.aPISecret)
+	req.SetBasicAuth(e.apiKey, e.apiSecret)
 
 	for headerKey, headerVal := range e.headerMap {
 		req.Header.Add(headerKey, headerVal)
@@ -82,6 +81,6 @@ func (e HTTP) postMetrics(payload []byte) {
 		panic(err)
 	}
 
-	fmt.Println(resp) // What should this be instead?
+	log.Println(resp)
 	defer resp.Body.Close()
 }

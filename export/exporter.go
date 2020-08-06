@@ -21,15 +21,15 @@ type ExporterAgent struct {
 // Config defines the data format of the general
 // configurations of an exporter.
 type Config struct {
-	IncludeFilter     string
-	ReportingPeriodms int
+	IncludeFilter       string
+	ReportingPeriodmins int
 }
 
 // NewConfig returns a new exporter Config.
 func NewConfig(filter string, reportingPeriod int) Config {
 	return Config{
-		IncludeFilter:     filter,
-		ReportingPeriodms: reportingPeriod,
+		IncludeFilter:       filter,
+		ReportingPeriodmins: reportingPeriod,
 	}
 }
 
@@ -47,7 +47,7 @@ func (e *ExporterAgent) Start(reportingPeriodms int) error {
 	e.initReaderOnce.Do(func() {
 		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e.Exporter)
 	})
-	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Minute	
+	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Minute
 	return e.ir.Start()
 }
 

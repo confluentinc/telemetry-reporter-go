@@ -9,8 +9,8 @@ var (
 	dummyReportingPeriod = 1
 
 	config = Config{
-		IncludeFilter:     dummyIncludeFilter,
-		ReportingPeriodms: dummyReportingPeriod,
+		IncludeFilter:       dummyIncludeFilter,
+		ReportingPeriodmins: dummyReportingPeriod,
 	}
 )
 
