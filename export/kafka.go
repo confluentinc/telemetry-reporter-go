@@ -158,14 +158,15 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 }
 
 func handleEvents(events chan kafka.Event) {
-	for e := range events {
-		switch ev := e.(type) {
-		case *kafka.Message:
-			if ev.TopicPartition.Error != nil {
-				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
-			} else {
-				fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
-			}
-		}
-	}
+	//TODO: Replace logic here to log totals and export OpenCensus metrics
+	// for e := range events {
+	// 	switch ev := e.(type) {
+	// 	case *kafka.Message:
+	// 		if ev.TopicPartition.Error != nil {
+	// 			fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+	// 		} else {
+	// 			fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+	// 		}
+	// 	}
+	// }
 }
