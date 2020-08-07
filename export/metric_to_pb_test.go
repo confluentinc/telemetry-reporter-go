@@ -1,13 +1,16 @@
 package export
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
 	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/resource"
 
 	a1 "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -127,8 +130,23 @@ func TestMetricToTimeSeries(t *testing.T) {
 	compareMetricTimeseries(t, timeseries, got)
 }
 
-// TODO if we chose to provide support for this
-func TestMetricToResource(t *testing.T) {
+func TestResourceToProto(t *testing.T) {
+	r := &resource.Resource{
+		Type: "test",
+		Labels: map[string]string{
+			"key": "val",
+		},
+	}
+
+	got := resourceToProto(r)
+	want := &r1.Resource{
+		Type: "test",
+		Labels: map[string]string{
+			"key": "val",
+		},
+	}
+
+	compareResources(t, want, got)
 }
 
 func TestMetricToDescriptor(t *testing.T) {
@@ -308,4 +326,14 @@ func compareMetricDesc(t *testing.T, want *v1.MetricDescriptor, got *v1.MetricDe
 	}
 
 	compareLabelKeys(t, want.LabelKeys, got.LabelKeys)
+}
+
+func compareResources(t *testing.T, want *r1.Resource, got *r1.Resource) {
+	if want.Type != got.Type {
+		t.Errorf("Resource to Proto failed, expected type %v, got %v", want.Type, got.Type)
+	}
+
+	if !reflect.DeepEqual(want.Labels, got.Labels) {
+		t.Errorf("Resource to Proto failed, expected labels %v, labels %v", want.Labels, got.Labels)
+	}
 }

@@ -107,11 +107,11 @@ func compareHTTP(t *testing.T, want HTTP, got HTTP) {
 		t.Errorf("New HTTP failed, expected secret %v, got %v", want.apiSecret, got.apiSecret)
 	}
 
-	if eq := reflect.DeepEqual(want.headerMap, got.headerMap); !eq {
+	if !reflect.DeepEqual(want.headerMap, got.headerMap) {
 		t.Errorf("New HTTP failed, expected map %v, got %v", want.headerMap, got.headerMap)
 	}
 
-	if eq := reflect.DeepEqual(want.client, got.client); !eq {
+	if !reflect.DeepEqual(want.client, got.client) {
 		t.Errorf("New HTTP failed, expected client %v, got %v", *want.client, *got.client)
 	}
 

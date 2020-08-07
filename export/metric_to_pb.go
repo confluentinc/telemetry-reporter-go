@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/resource"
 )
 
 func metricsToServiceRequest(ms []*metricdata.Metric) *a1.ExportMetricsServiceRequest {
@@ -28,7 +29,7 @@ func metricToProto(m *metricdata.Metric) *v1.Metric {
 	return &v1.Metric{
 		MetricDescriptor: metricToDescriptor(m),
 		Timeseries:       metricToTimeSeries(m),
-		Resource:         metricToResource(m),
+		Resource:         resourceToProto(m.Resource),
 	}
 }
 
@@ -66,11 +67,11 @@ func metricdataTypetoProtoType(metricType metricdata.Type) v1.MetricDescriptor_T
 	return v1.MetricDescriptor_Type(metricType + 1)
 }
 
-func metricToResource(m *metricdata.Metric) *r1.Resource {
-	if m.Resource != nil {
+func resourceToProto(r *resource.Resource) *r1.Resource {
+	if r != nil {
 		return &r1.Resource{
-			Type:   m.Resource.Type,
-			Labels: m.Resource.Labels,
+			Type:   r.Type,
+			Labels: r.Labels,
 		}
 	}
 
