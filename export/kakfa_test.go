@@ -26,9 +26,10 @@ var (
 )
 
 func TestNewKafka(t *testing.T) {
-	gotKafka, gotAgent := NewKafka(config, kafkaConfig, topicInfo)
-	defer gotKafka.Stop()
-	defer gotAgent.Stop()
+	got := NewKafka(config, kafkaConfig, topicInfo)
+	defer got.Stop()
+
+	gotKafka := got.Exporter.(Kafka)
 
 	if kafkaExporter.config != gotKafka.config {
 		t.Fatalf("New Kafka failed, expected config %v, got %v", kafkaExporter.config, gotKafka.config)
@@ -41,4 +42,5 @@ func TestNewKafka(t *testing.T) {
 	if kafkaExporter.topicInfo.Topic != gotKafka.topicInfo.Topic {
 		t.Fatalf("New Kafka failed, expected topic %v, got %v", kafkaExporter.topicInfo.Topic, gotKafka.topicInfo.Topic)
 	}
+
 }

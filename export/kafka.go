@@ -33,7 +33,7 @@ type Kafka struct {
 }
 
 // NewKafka returns a new Kafka exporter
-func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) (*Kafka, *ExporterAgent) {
+func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *ExporterAgent {
 	createTopic(topicInfo, kafkaConfig)
 
 	producer, err := kafka.NewProducer(kafkaConfig)
@@ -41,7 +41,7 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 		panic(err)
 	}
 
-	kafka := &Kafka{
+	kafka := Kafka{
 		config:              config,
 		kafkaConfig:         kafkaConfig,
 		topicInfo:           topicInfo,
@@ -51,11 +51,11 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 	}
 
 	agent := newExporterAgent(kafka)
-	if err := agent.Start(kafka.config.ReportingPeriodmins); err != nil {
+	if err := agent.Start(kafka.config.reportingPeriodMilliseconds); err != nil {
 		panic(err)
 	}
 
-	return kafka, agent
+	return agent
 }
 
 func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
@@ -107,13 +107,13 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
 }
 
 // Stop closes the Kafka producer.
-func (e *Kafka) Stop() {
+func (e Kafka) Stop() {
 	defer e.producer.Close()
 }
 
 // SetMessageFlushTime sets the time to wait to flush the
 // Kafka message buffer. Default is 15 seconds
-func (e *Kafka) SetMessageFlushTime(seconds int) {
+func (e Kafka) SetMessageFlushTime(seconds int) {
 	e.messageFlushTimeSec = seconds
 }
 

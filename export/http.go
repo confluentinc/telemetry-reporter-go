@@ -39,7 +39,7 @@ func NewHTTP(address string, apiKey string, apiSecret string, config Config) *Ex
 	}
 
 	agent := newExporterAgent(exporter)
-	if err := agent.Start(exporter.config.ReportingPeriodmins); err != nil {
+	if err := agent.Start(exporter.config.reportingPeriodMilliseconds); err != nil {
 		panic(err)
 	}
 
@@ -47,7 +47,7 @@ func NewHTTP(address string, apiKey string, apiSecret string, config Config) *Ex
 }
 
 // AddHeader adds a map of headers to the exporter for its HTTP request.
-func (e *ExporterAgent) AddHeader(headerMap map[string]string) {
+func (e ExporterAgent) AddHeader(headerMap map[string]string) {
 	for k, v := range headerMap {
 		e.Exporter.(HTTP).headerMap[k] = v
 	}

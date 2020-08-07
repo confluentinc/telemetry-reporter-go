@@ -52,9 +52,8 @@ func main() {
 	topicInfo := export.TopicConfig{
 		Topic: "test",
 	}
-	kafkaExporter, agent := export.NewKafka(config, kafkaConfig, topicInfo)
+	kafkaExporter := export.NewKafka(config, kafkaConfig, topicInfo)
 	defer kafkaExporter.Stop()
-	defer agent.Stop()
 
 	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
 
