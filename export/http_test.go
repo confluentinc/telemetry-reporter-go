@@ -59,7 +59,8 @@ var (
 )
 
 func TestNewHTTP(t *testing.T) {
-	got := NewHTTP(address, apiKey, apiSecret, map[string]string{"key": "val"}, config)
+	got := NewHTTP(address, apiKey, apiSecret, config)
+	got.AddHeader(map[string]string{"key": "val"})
 	defer got.Stop()
 
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))

@@ -24,8 +24,10 @@ type HTTP struct {
 }
 
 // NewHTTP returns a new exporter agent with an HTTP exporter attached
-func NewHTTP(address string, apiKey string, apiSecret string, headerMap map[string]string, config Config) *ExporterAgent {
-	headerMap["Content-Type"] = "application/x-protobuf"
+func NewHTTP(address string, apiKey string, apiSecret string, config Config) *ExporterAgent {
+	headerMap := map[string]string{
+		"Content-Type": "application/x-protobuf",
+	}
 
 	exporter := HTTP{
 		address:   address,
@@ -42,7 +44,13 @@ func NewHTTP(address string, apiKey string, apiSecret string, headerMap map[stri
 	}
 
 	return agent
+}
 
+// AddHeader adds a map of headers to the exporter for its HTTP request.
+func (e *ExporterAgent) AddHeader(headerMap map[string]string) {
+	for k, v := range headerMap {
+		e.Exporter.(HTTP).headerMap[k] = v
+	}
 }
 
 // ExportMetrics converts the metrics to a metrics service request protobuf and

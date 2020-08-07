@@ -51,7 +51,7 @@ func main() {
 	view.Register(metric1View, metric2View)
 
 	config := export.NewConfig(`.*`, 10000)
-	http := export.NewHTTP(address, apikey, apisecret, map[string]string{}, config)
+	http := export.NewHTTP(address, apikey, apisecret, config)
 	defer http.Stop()
 
 	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
