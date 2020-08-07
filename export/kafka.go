@@ -113,8 +113,10 @@ func (e Kafka) Stop() {
 
 // SetMessageFlushTime sets the time to wait to flush the
 // Kafka message buffer. Default is 15 seconds
-func (e Kafka) SetMessageFlushTime(seconds int) {
-	e.messageFlushTimeSec = seconds
+func (e *ExporterAgent) SetMessageFlushTime(seconds int) {
+	newKafka := e.Exporter.(Kafka)
+	newKafka.messageFlushTimeSec = seconds
+	e.Exporter = newKafka
 }
 
 // ExportMetrics converts the metrics to a metrics service request protobuf and
