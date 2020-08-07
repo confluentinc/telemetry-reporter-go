@@ -1,6 +1,8 @@
 package export
 
 import (
+	"fmt"
+
 	a1 "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
@@ -131,7 +133,10 @@ func metricToPoints(t *metricdata.TimeSeries) []*v1.Point {
 			toAppend.Value = &v1.Point_SummaryValue{
 				SummaryValue: pointToSummaryValue(v),
 			}
-		// TODO Distribution
+		case *metricdata.Distribution:
+			toAppend.Value = &v1.Point_DistributionValue{
+				DistributionValue: pointToDistributionValue(v),
+			}
 		default:
 			panic("unsupported value type")
 		}
@@ -169,4 +174,66 @@ func summaryValToSnapshot(summary *metricdata.Summary) *v1.SummaryValue_Snapshot
 
 	snapshot.PercentileValues = percentileValues
 	return snapshot
+}
+
+func pointToDistributionValue(value *metricdata.Distribution) *v1.DistributionValue {
+	return &v1.DistributionValue{
+		Count:                 value.Count,
+		Sum:                   value.Sum,
+		SumOfSquaredDeviation: value.SumOfSquaredDeviation,
+		Buckets:               distributionToBuckets(value),
+		BucketOptions:         distributionToBucketOptions(value),
+	}
+}
+
+func distributionToBuckets(value *metricdata.Distribution) []*v1.DistributionValue_Bucket {
+	buckets := []*v1.DistributionValue_Bucket{}
+
+	for _, bucket := range value.Buckets {
+		buckets = append(buckets, bucketToProto(bucket))
+	}
+
+	return buckets
+}
+
+func bucketToProto(bucket metricdata.Bucket) *v1.DistributionValue_Bucket {
+	res := &v1.DistributionValue_Bucket{
+		Count: bucket.Count,
+	}
+
+	if bucket.Exemplar != nil {
+		res.Exemplar = bucketToExemplar(bucket)
+	}
+
+	return res
+}
+
+func bucketToExemplar(bucket metricdata.Bucket) *v1.DistributionValue_Exemplar {
+	timestamp, _ := ptypes.TimestampProto(bucket.Exemplar.Timestamp)
+
+	return &v1.DistributionValue_Exemplar{
+		Value:       bucket.Exemplar.Value,
+		Timestamp:   timestamp,
+		Attachments: bucketToAttachments(bucket),
+	}
+}
+
+func bucketToAttachments(bucket metricdata.Bucket) map[string]string {
+	res := map[string]string{}
+
+	for k, v := range bucket.Exemplar.Attachments {
+		res[k] = fmt.Sprintf("%v", v)
+	}
+
+	return res
+}
+
+func distributionToBucketOptions(value *metricdata.Distribution) *v1.DistributionValue_BucketOptions {
+	return &v1.DistributionValue_BucketOptions{
+		Type: &v1.DistributionValue_BucketOptions_Explicit_{
+			Explicit: &v1.DistributionValue_BucketOptions_Explicit{
+				Bounds: value.BucketOptions.Bounds,
+			},
+		},
+	}
 }
