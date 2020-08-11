@@ -92,7 +92,7 @@ func TestMetricToPointInt64(t *testing.T) {
 		Points: []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
 	}
 	got := metricToPoints(&timeseries)
-	comparePoints(t, intPoints, got, true)
+	comparePoints(t, intPoints, got)
 }
 
 func TestMetricToPointDouble64(t *testing.T) {
@@ -100,7 +100,7 @@ func TestMetricToPointDouble64(t *testing.T) {
 		Points: []metricdata.Point{metricdata.NewFloat64Point(timeNow, doubleVal)},
 	}
 	got := metricToPoints(&timeseries)
-	comparePoints(t, doublePoints, got, false)
+	comparePoints(t, doublePoints, got)
 }
 
 func TestMetricToLabelValues(t *testing.T) {
@@ -247,7 +247,7 @@ func TestMetricToServiceRequest(t *testing.T) {
 	}
 }
 
-func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point, isInt bool) {
+func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point) {
 	if len(want) != len(got) {
 		t.Errorf("Metric to Points int failed, expected length %v, got %v", len(want), len(got))
 	}
@@ -256,13 +256,15 @@ func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point, isInt bool) 
 		if want[i].Timestamp.String() != got[i].Timestamp.String() {
 			t.Errorf("Metric to Points int failed, expected time %v, got %v", want[i].Timestamp, got[i].Timestamp)
 		}
-		if isInt {
-			if want[i].GetInt64Value() != got[i].GetInt64Value() {
-				t.Errorf("Metric to Points int failed, expected val %v, got %v", want[i].GetInt64Value(), got[i].GetInt64Value())
+
+		switch val := want[i].Value.(type) {
+		case *v1.Point_Int64Value:
+			if val.Int64Value != got[i].GetInt64Value() {
+				t.Errorf("Metric to Points int failed, expected val %v, got %v", val.Int64Value, got[i].GetInt64Value())
 			}
-		} else {
-			if want[i].GetDoubleValue() != got[i].GetDoubleValue() {
-				t.Errorf("Metric to Points double failed, expected val %v, got %v", want[i].GetDoubleValue(), got[i].GetDoubleValue())
+		case *v1.Point_DoubleValue:
+			if val.DoubleValue != got[i].GetDoubleValue() {
+				t.Errorf("Metric to Points double failed, expected val %v, got %v", val.DoubleValue, got[i].GetDoubleValue())
 			}
 		}
 
@@ -292,7 +294,7 @@ func compareMetricTimeseries(t *testing.T, want []*v1.TimeSeries, got []*v1.Time
 		}
 
 		compareLabelVals(t, want[i].LabelValues, got[i].LabelValues)
-		comparePoints(t, want[i].Points, got[i].Points, true)
+		comparePoints(t, want[i].Points, got[i].Points)
 	}
 }
 

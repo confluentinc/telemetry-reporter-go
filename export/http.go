@@ -86,7 +86,7 @@ func (e HTTP) postMetrics(payload []byte) {
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		panic(err)
+		log.Printf("Error sending request: %v", err)
 	}
 
 	log.Println(resp)

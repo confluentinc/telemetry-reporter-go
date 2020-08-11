@@ -41,15 +41,20 @@ var (
 
 // configure where to send metrics to
 const (
-	address   = "<address>"
-	apikey    = "<api_key>"
-	apisecret = "<api_secret>"
+	address   = "<address>"    // address of the HTTP endpoint
+	apikey    = "<api_key>"    // username for authentication
+	apisecret = "<api_secret>" // password for authentication
 )
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	view.Register(metric1View, metric2View)
 
+	/*
+		NewConfig is made up of and universal to all exporters
+			1. regex include filter (`.*`)
+			2. reporting period in ms (10000 -> 10s)
+	*/
 	config := export.NewConfig(`.*`, 10000)
 	http := export.NewHTTP(address, apikey, apisecret, config)
 	defer http.Stop()

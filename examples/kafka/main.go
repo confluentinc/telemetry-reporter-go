@@ -44,11 +44,32 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	view.Register(metric1View, metric2View)
 
+	/*
+		A full list of configurations can be found here
+		https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+
+		If you want to configure for Confluent Cloud you need
+			1. "bootstrap.servers" -  Alias for metadata.broker.list:
+			Initial list of brokers as a CSV list of broker host or host:port.
+			2. "sasl.mechanism" - SASL mechanism to use for authentication, should be set to “PLAIN”
+			3. "security.protocol" - Protocol used to communicate with brokers, should be set to “SASL_SSL”
+			4. "sasl.username" - SASL username for use with the PLAIN and SASL-SCRAM-.. mechanisms
+			5. "sasl.password" - SASL password for use with the PLAIN and SASL-SCRAM-.. mechanisms
+	*/
 	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers": "localhost:9092",
 	}
 
 	config := export.NewConfig(`.*`, 10000)
+
+	/*
+		TopicConfig is made up of
+			1. Topic - topic name to export messages to
+			2. NumPartitions - sets the number of partitions of topic if
+			TopicConfig.Topic doesn't exist and the exporter needs to create it
+			3. NumReplicas - sets the number of replicas of topic if
+			TopicConfig.Topic doesn't exist and the exporter needs to create it
+	*/
 	topicInfo := export.TopicConfig{
 		Topic: "test",
 	}
