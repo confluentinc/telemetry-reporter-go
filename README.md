@@ -22,9 +22,8 @@ The Kafka exporter needs an `export.Config`, KafkaConfig, and a `export.TopicInf
 
 The Kafka exporter is instantiated by calling `export.NewKafka`. Here is an example:
 ```go
-kafkaExporter, agent := export.NewKafka(config, kafkaConfig, topicInfo)
+kafkaExporter := export.NewKafka(config, kafkaConfig, topicInfo)
 defer kafkaExporter.Stop()
-defer agent.Stop()
 ```
 
 ### HTTP
