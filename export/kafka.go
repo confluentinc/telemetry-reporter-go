@@ -10,7 +10,30 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"google.golang.org/protobuf/proto"
+)
+
+var (
+	messagesSent    = stats.Int64("messages_sent", "the number of metric messages successfully sent", "1")
+	messagesDropped = stats.Int64("messages_dropped", "the number of metric messages dropped", "1")
+)
+
+var (
+	messagesSentView = &view.View{
+		Name:        "messages_sent",
+		Measure:     messagesSent,
+		Description: "the number of metric messages successfully sent",
+		Aggregation: view.Count(),
+	}
+
+	messagesDropedView = &view.View{
+		Name:        "messages_dropped",
+		Measure:     messagesDropped,
+		Description: "the number of metric messages dropped",
+		Aggregation: view.Sum(),
+	}
 )
 
 // TopicConfig holds the configurations for Topic info
@@ -33,6 +56,10 @@ type Kafka struct {
 
 // NewKafka returns a new Kafka exporter
 func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *ExporterAgent {
+	if err := view.Register(messagesSentView, messagesDropedView); err != nil {
+		log.Printf("Problem registering views: %v", err)
+	}
+
 	createTopic(topicInfo, kafkaConfig)
 
 	producer, err := kafka.NewProducer(kafkaConfig)
@@ -129,7 +156,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 			metricsRequestpb := metricToProto(d)
 			payload, err := proto.Marshal(metricsRequestpb)
 			if err != nil {
-				log.Fatal("Marshalling Error: ", err)
+				log.Printf("Marshalling Error: %v", err)
 			}
 
 			err = e.producer.Produce(&kafka.Message{
@@ -141,13 +168,15 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 			}, nil)
 
 			if err != nil {
-				log.Fatal("Error sending message with Producer: ", err)
+				log.Printf("Error sending message with Producer: %v", err)
 			}
 		}
 	}
 
 	droppedCount := e.producer.Flush(e.messageFlushTimeSec * 1000)
+	stats.Record(context.Background(), messagesDropped.M(int64(droppedCount)))
 	droppedDelta := droppedCount - e.lastDroppedLogCount
+
 	if droppedDelta > 0 {
 		log.Println("Failed to produce %i metrics messages", droppedDelta)
 	}
@@ -158,15 +187,14 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 }
 
 func handleEvents(events chan kafka.Event) {
-	//TODO: Replace logic here to log totals and export OpenCensus metrics
-	// for e := range events {
-	// 	switch ev := e.(type) {
-	// 	case *kafka.Message:
-	// 		if ev.TopicPartition.Error != nil {
-	// 			fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
-	// 		} else {
-	// 			fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
-	// 		}
-	// 	}
-	// }
+	for e := range events {
+		switch ev := e.(type) {
+		case *kafka.Message:
+			if ev.TopicPartition.Error != nil {
+				stats.Record(context.Background(), messagesDropped.M(1))
+			} else {
+				stats.Record(context.Background(), messagesSent.M(1))
+			}
+		}
+	}
 }

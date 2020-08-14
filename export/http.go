@@ -68,7 +68,7 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 	metricsRequestProto := metricsToServiceRequest(includeData)
 	payload, err := proto.Marshal(metricsRequestProto)
 	if err != nil {
-		log.Fatal("Marshalling error: ", err)
+		log.Printf("Marshalling error: %v", err)
 	}
 
 	e.postMetrics(payload)
