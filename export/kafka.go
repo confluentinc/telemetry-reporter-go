@@ -157,7 +157,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 	for _, d := range data {
 		matched, err := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name))
 		if err != nil {
-			errors.Wrap(err, "Error matching regular expression")
+			return errors.Wrap(err, "Error matching regular expression")
 		}
 
 		if matched {
