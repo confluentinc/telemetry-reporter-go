@@ -10,7 +10,7 @@ go get -u github.com/confluentinc/telemetry-reporter-go
 ```
 
 ## Export
-For the export package we provide 2 custom exporters: HTTP Exporter and Kafka exporter.
+For the export package we provide 2 custom exporters: HTTP Exporter and Kafka exporter. Both the Kafka and HTTP exporter constructors not only instantiate the exporter, but also start them.
 
 For both exporters you must define an `export.Config` which you can do using the `export.NewConfig` function. The Config is currently made up of an include filter (regex filter for what metrics to export) and a reporting period in milliseconds.
 
