@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"go.opencensus.io/metric/metricexport"
 )
 
@@ -47,6 +48,11 @@ func (e *ExporterAgent) Start(reportingPeriodms int) error {
 	e.initReaderOnce.Do(func() {
 		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e.Exporter)
 	})
+
+	if e.ir == nil {
+		return errors.New("Failed to create Interval Reader")
+	}
+
 	e.ir.ReportingInterval = time.Duration(reportingPeriodms) * time.Millisecond
 	return e.ir.Start()
 }
