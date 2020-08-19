@@ -56,11 +56,11 @@
 				
 				<option value="file0">github.com/confluentinc/telemetry-reporter-go/export/exporter.go (100.0%)</option>
 				
-				<option value="file1">github.com/confluentinc/telemetry-reporter-go/export/http.go (86.2%)</option>
+				<option value="file1">github.com/confluentinc/telemetry-reporter-go/export/http.go (81.2%)</option>
 				
-				<option value="file2">github.com/confluentinc/telemetry-reporter-go/export/kafka.go (35.1%)</option>
+				<option value="file2">github.com/confluentinc/telemetry-reporter-go/export/kafka.go (36.8%)</option>
 				
-				<option value="file3">github.com/confluentinc/telemetry-reporter-go/export/metric_to_pb.go (54.5%)</option>
+				<option value="file3">github.com/confluentinc/telemetry-reporter-go/export/metric_to_pb.go (55.4%)</option>
 				
 				<option value="file4">github.com/confluentinc/telemetry-reporter-go/export/resource.go (100.0%)</option>
 				
@@ -146,10 +146,10 @@ func (e *ExporterAgent) Stop() <span class="cov8" title="1">{
 import (
         "bytes"
         "context"
-        "log"
         "net/http"
         "regexp"
 
+        "github.com/pkg/errors"
         "go.opencensus.io/metric/metricdata"
         "google.golang.org/protobuf/proto"
 )
@@ -166,7 +166,7 @@ type HTTP struct {
 }
 
 // NewHTTP returns a new exporter agent with an HTTP exporter attached
-func NewHTTP(address string, apiKey string, apiSecret string, config Config) *ExporterAgent <span class="cov8" title="1">{
+func NewHTTP(address string, apiKey string, apiSecret string, config Config) (*ExporterAgent, error) <span class="cov8" title="1">{
         headerMap := map[string]string{
                 "Content-Type": "application/x-protobuf",
         }
@@ -182,10 +182,10 @@ func NewHTTP(address string, apiKey string, apiSecret string, config Config) *Ex
 
         agent := newExporterAgent(exporter)
         if err := agent.Start(exporter.config.reportingPeriodMilliseconds); err != nil </span><span class="cov0" title="0">{
-                panic(err)</span>
-        }
+                return nil, errors.Wrap(err, "Couldn't Start Exporter")
+        }</span>
 
-        <span class="cov8" title="1">return agent</span>
+        <span class="cov8" title="1">return agent, nil</span>
 }
 
 // AddHeader adds a map of headers to the exporter for its HTTP request.
@@ -208,18 +208,24 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
                 }</span>
         }
 
-        <span class="cov8" title="1">metricsRequestProto := metricsToServiceRequest(includeData)
-        payload, err := proto.Marshal(metricsRequestProto)
+        <span class="cov8" title="1">metricsRequestProto, err := metricsToServiceRequest(includeData)
         if err != nil </span><span class="cov0" title="0">{
-                log.Printf("Marshalling error: %v", err)
+                return errors.Wrap(err, "Error converting metric to Proto")
         }</span>
 
-        <span class="cov8" title="1">e.postMetrics(payload)
+        <span class="cov8" title="1">payload, err := proto.Marshal(metricsRequestProto)
+        if err != nil </span><span class="cov0" title="0">{
+                return errors.Wrap(err, "Marshalling error")
+        }</span>
 
-        return nil</span>
+        <span class="cov8" title="1">if err := e.postMetrics(payload); err != nil </span><span class="cov0" title="0">{
+                return errors.Wrap(err, "Error sending metrics")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
 }
 
-func (e HTTP) postMetrics(payload []byte) <span class="cov8" title="1">{
+func (e HTTP) postMetrics(payload []byte) error <span class="cov8" title="1">{
         req, _ := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
         req.SetBasicAuth(e.apiKey, e.apiSecret)
 
@@ -229,11 +235,11 @@ func (e HTTP) postMetrics(payload []byte) <span class="cov8" title="1">{
 
         <span class="cov8" title="1">resp, err := e.client.Do(req)
         if err != nil </span><span class="cov0" title="0">{
-                log.Printf("Error sending request: %v", err)
+                return errors.Wrap(err, "Error sending request")
         }</span>
 
-        <span class="cov8" title="1">log.Println(resp)
-        defer resp.Body.Close()</span>
+        <span class="cov8" title="1">defer resp.Body.Close()
+        return nil</span>
 }
 </pre>
 		
@@ -243,11 +249,11 @@ import (
         "context"
         "fmt"
         "log"
-        "os"
         "regexp"
         "time"
 
         "github.com/confluentinc/confluent-kafka-go/kafka"
+        "github.com/pkg/errors"
         "go.opencensus.io/metric/metricdata"
         "go.opencensus.io/stats"
         "go.opencensus.io/stats/view"
@@ -294,17 +300,17 @@ type Kafka struct {
 }
 
 // NewKafka returns a new Kafka exporter
-func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *ExporterAgent <span class="cov8" title="1">{
+func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) (*ExporterAgent, error) <span class="cov8" title="1">{
         if err := view.Register(messagesSentView, messagesDropedView); err != nil </span><span class="cov0" title="0">{
-                log.Printf("Problem registering views: %v", err)
+                return nil, errors.Wrap(err, "Error registering views")
         }</span>
 
         <span class="cov8" title="1">createTopic(topicInfo, kafkaConfig)
 
         producer, err := kafka.NewProducer(kafkaConfig)
         if err != nil </span><span class="cov0" title="0">{
-                panic(err)</span>
-        }
+                return nil, errors.Wrap(err, "Error creating Kafka producer")
+        }</span>
 
         <span class="cov8" title="1">kafka := Kafka{
                 config:              config,
@@ -317,17 +323,16 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 
         agent := newExporterAgent(kafka)
         if err := agent.Start(kafka.config.reportingPeriodMilliseconds); err != nil </span><span class="cov0" title="0">{
-                panic(err)</span>
-        }
+                return agent, errors.Wrap(err, "Error starting exporter")
+        }</span>
 
-        <span class="cov8" title="1">return agent</span>
+        <span class="cov8" title="1">return agent, nil</span>
 }
 
-func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) <span class="cov8" title="1">{
+func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) error <span class="cov8" title="1">{
         adminClient, err := kafka.NewAdminClient(kafkaConfig)
         if err != nil </span><span class="cov0" title="0">{
-                fmt.Printf("Failed to create Admin client: %s\n", err)
-                os.Exit(1)
+                return errors.Wrap(err, "Failed to create Admin client")
         }</span>
 
         // Contexts are used to abort or limit the amount of time
@@ -339,8 +344,8 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) <span clas
         // Set Admin options to wait for the operation to finish (or at most 60s)
         maxDuration, err := time.ParseDuration("60s")
         if err != nil </span><span class="cov0" title="0">{
-                panic("time.ParseDuration(60s)")</span>
-        }
+                return errors.Wrap(err, "time.ParseDuration(60s)")
+        }</span>
 
         <span class="cov8" title="1">if topicInfo.NumPartitions != 0 &amp;&amp; topicInfo.NumReplicas != 0 </span><span class="cov0" title="0">{
                 results, err := adminClient.CreateTopics(ctx,
@@ -352,23 +357,20 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) <span clas
                         kafka.SetAdminOperationTimeout(maxDuration))
 
                 if err != nil </span><span class="cov0" title="0">{
-                        fmt.Printf("Problem during the topic creation: %v\n", err)
-                        os.Exit(1)
+                        return errors.Wrap(err, "Problem during the topic creation")
                 }</span>
 
                 // Check for specific topic errors
                 <span class="cov0" title="0">for _, result := range results </span><span class="cov0" title="0">{
                         if result.Error.Code() != kafka.ErrNoError &amp;&amp;
                                 result.Error.Code() != kafka.ErrTopicAlreadyExists </span><span class="cov0" title="0">{
-                                fmt.Printf("Topic creation failed for %s: %v",
-                                        result.Topic, result.Error.String())
-                                os.Exit(1)
+                                return errors.Wrap(result.Error, fmt.Sprintf("Topic creation failed for topic %v", result.Topic))
                         }</span>
                 }
         }
 
-        <span class="cov8" title="1">adminClient.Close()</span>
-
+        <span class="cov8" title="1">adminClient.Close()
+        return nil</span>
 }
 
 // Stop closes the Kafka producer.
@@ -392,10 +394,14 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
         for _, d := range data </span><span class="cov0" title="0">{
                 if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched </span><span class="cov0" title="0">{
                         d.Resource, _ = TotDetector(ctx)
-                        metricsRequestpb := metricToProto(d)
-                        payload, err := proto.Marshal(metricsRequestpb)
+                        metricsRequestpb, err := metricToProto(d)
                         if err != nil </span><span class="cov0" title="0">{
-                                log.Printf("Marshalling Error: %v", err)
+                                return errors.Wrap(err, "Error converting metric to Proto")
+                        }</span>
+
+                        <span class="cov0" title="0">payload, err := proto.Marshal(metricsRequestpb)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return errors.Wrap(err, "Marshalling Error")
                         }</span>
 
                         <span class="cov0" title="0">err = e.producer.Produce(&amp;kafka.Message{
@@ -407,7 +413,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
                         }, nil)
 
                         if err != nil </span><span class="cov0" title="0">{
-                                log.Printf("Error sending message with Producer: %v", err)
+                                return errors.Wrap(err, "Error sending message with Producer")
                         }</span>
                 }
         }
@@ -449,30 +455,42 @@ import (
         r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
         "github.com/golang/protobuf/ptypes"
         "github.com/golang/protobuf/ptypes/wrappers"
+        "github.com/pkg/errors"
         "go.opencensus.io/metric/metricdata"
         "go.opencensus.io/resource"
 )
 
-func metricsToServiceRequest(ms []*metricdata.Metric) *a1.ExportMetricsServiceRequest <span class="cov8" title="1">{
+func metricsToServiceRequest(ms []*metricdata.Metric) (*a1.ExportMetricsServiceRequest, error) <span class="cov8" title="1">{
         metrics := []*v1.Metric{}
 
         for _, m := range ms </span><span class="cov8" title="1">{
-                toAppend := metricToProto(m)
-                metrics = append(metrics, toAppend)
-        }</span>
+                toAppend, err := metricToProto(m)
+
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, errors.Wrap(err, fmt.Sprintf("Error convert metric %v to proto", m))
+                }</span>
+
+                <span class="cov8" title="1">metrics = append(metrics, toAppend)</span>
+        }
 
         <span class="cov8" title="1">return &amp;a1.ExportMetricsServiceRequest{
                 Metrics: metrics,
-        }</span>
+        }, nil</span>
 }
 
-func metricToProto(m *metricdata.Metric) *v1.Metric <span class="cov8" title="1">{
-        return &amp;v1.Metric{
+func metricToProto(m *metricdata.Metric) (*v1.Metric, error) <span class="cov8" title="1">{
+        timeseries, err := metricToTimeSeries(m)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return &amp;v1.Metric{
                 MetricDescriptor: metricToDescriptor(m),
-                Timeseries:       metricToTimeSeries(m),
+                Timeseries:       timeseries,
                 Resource:         resourceToProto(m.Resource),
-        }
-}</span>
+        }, nil</span>
+}
 
 func metricToLabelKeys(m *metricdata.Metric) []*v1.LabelKey <span class="cov8" title="1">{
         labelKeys := []*v1.LabelKey{}
@@ -520,22 +538,27 @@ func resourceToProto(r *resource.Resource) *r1.Resource <span class="cov8" title
 
 }
 
-func metricToTimeSeries(m *metricdata.Metric) []*v1.TimeSeries <span class="cov8" title="1">{
+func metricToTimeSeries(m *metricdata.Metric) ([]*v1.TimeSeries, error) <span class="cov8" title="1">{
         timeSeries := []*v1.TimeSeries{}
 
         for _, ts := range m.TimeSeries </span><span class="cov8" title="1">{
                 timestamp, _ := ptypes.TimestampProto(ts.StartTime)
+                points, err := metricToPoints(ts)
 
-                toAppend := &amp;v1.TimeSeries{
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">toAppend := &amp;v1.TimeSeries{
                         StartTimestamp: timestamp,
                         LabelValues:    metricToLabelValues(ts),
-                        Points:         metricToPoints(ts),
+                        Points:         points,
                 }
 
-                timeSeries = append(timeSeries, toAppend)
-        }</span>
+                timeSeries = append(timeSeries, toAppend)</span>
+        }
 
-        <span class="cov8" title="1">return timeSeries</span>
+        <span class="cov8" title="1">return timeSeries, nil</span>
 }
 
 func metricToLabelValues(t *metricdata.TimeSeries) []*v1.LabelValue <span class="cov8" title="1">{
@@ -553,7 +576,7 @@ func metricToLabelValues(t *metricdata.TimeSeries) []*v1.LabelValue <span class=
         <span class="cov8" title="1">return labelValues</span>
 }
 
-func metricToPoints(t *metricdata.TimeSeries) []*v1.Point <span class="cov8" title="1">{
+func metricToPoints(t *metricdata.TimeSeries) ([]*v1.Point, error) <span class="cov8" title="1">{
         points := []*v1.Point{}
 
         for _, p := range t.Points </span><span class="cov8" title="1">{
@@ -580,13 +603,13 @@ func metricToPoints(t *metricdata.TimeSeries) []*v1.Point <span class="cov8" tit
                                 DistributionValue: pointToDistributionValue(v),
                         }</span>
                 default:<span class="cov0" title="0">
-                        panic("unsupported value type")</span>
+                        return nil, errors.New("Unsupported value type")</span>
                 }
 
                 <span class="cov8" title="1">points = append(points, toAppend)</span>
         }
 
-        <span class="cov8" title="1">return points</span>
+        <span class="cov8" title="1">return points, nil</span>
 }
 
 func pointToSummaryValue(value *metricdata.Summary) *v1.SummaryValue <span class="cov0" title="0">{

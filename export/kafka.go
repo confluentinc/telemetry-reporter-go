@@ -60,7 +60,9 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 		return nil, errors.Wrap(err, "Error registering views")
 	}
 
-	createTopic(topicInfo, kafkaConfig)
+	if err := createTopic(topicInfo, kafkaConfig); err != nil {
+		return nil, errors.Wrap(err, "Error creating topic")
+	}
 
 	producer, err := kafka.NewProducer(kafkaConfig)
 	if err != nil {
