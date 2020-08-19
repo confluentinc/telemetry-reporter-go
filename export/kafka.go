@@ -149,9 +149,19 @@ func (e *ExporterAgent) SetMessageFlushTime(seconds int) {
 func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
 	go handleEvents(e.producer.Events())
 
+	resource, err := TotDetector(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error creating resource detector")
+	}
+
 	for _, d := range data {
-		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
-			d.Resource, _ = TotDetector(ctx)
+		matched, err := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name))
+		if err != nil {
+			errors.Wrap(err, "Error matching regular expression")
+		}
+
+		if matched {
+			d.Resource = resource
 			metricsRequestpb, err := metricToProto(d)
 			if err != nil {
 				return errors.Wrap(err, "Error converting metric to Proto")

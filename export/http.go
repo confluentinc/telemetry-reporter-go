@@ -56,10 +56,16 @@ func (e *ExporterAgent) AddHeader(headerMap map[string]string) {
 // makes a POST request with that payload to an HTTP endpoint.
 func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) error {
 	includeData := []*metricdata.Metric{}
-	resource, _ := TotDetector(ctx)
+	resource, err := TotDetector(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error creating resource detector")
+	}
 
 	for _, d := range data {
-		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
+		matched, err := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name))
+		if err != nil {
+			return errors.Wrap(err, "Error matching regular expression")
+		} else if matched {
 			d.Resource = resource
 			includeData = append(includeData, d)
 		}
@@ -83,7 +89,10 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 }
 
 func (e HTTP) postMetrics(payload []byte) error {
-	req, _ := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
+	req, err := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
+	if err != nil {
+		return errors.Wrap(err, "Error creating POST request")
+	}
 	req.SetBasicAuth(e.apiKey, e.apiSecret)
 
 	for headerKey, headerVal := range e.headerMap {
