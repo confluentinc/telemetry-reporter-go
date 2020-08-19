@@ -60,6 +60,7 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 		return nil, errors.Wrap(err, "Error registering views")
 	}
 
+	// createTopic only actually creates the topic if it doesn't exist
 	if err := createTopic(topicInfo, kafkaConfig); err != nil {
 		return nil, errors.Wrap(err, "Error creating topic")
 	}
