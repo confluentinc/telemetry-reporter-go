@@ -3,7 +3,6 @@ package export
 import (
 	"context"
 	"fmt"
-	"log"
 	"regexp"
 	"time"
 
@@ -52,6 +51,7 @@ type Kafka struct {
 	topicInfo           TopicConfig
 	messageFlushTimeSec int
 	lastDroppedLogCount int
+	DroppedDelta        int
 }
 
 // NewKafka returns a new Kafka exporter
@@ -188,12 +188,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 
 	droppedCount := e.producer.Flush(e.messageFlushTimeSec * 1000)
 	stats.Record(context.Background(), messagesDropped.M(int64(droppedCount)))
-	droppedDelta := droppedCount - e.lastDroppedLogCount
-
-	if droppedDelta > 0 {
-		log.Println("Failed to produce %i metrics messages", droppedDelta)
-	}
-
+	e.DroppedDelta = droppedCount - e.lastDroppedLogCount
 	e.lastDroppedLogCount = droppedCount
 
 	return nil
