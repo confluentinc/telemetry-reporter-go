@@ -91,7 +91,10 @@ func TestMetricToPointInt64(t *testing.T) {
 	timeseries := metricdata.TimeSeries{
 		Points: []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
 	}
-	got := metricToPoints(&timeseries)
+	got, err := metricToPoints(&timeseries)
+	if err != nil {
+		t.Errorf("Error converting metric to timeseries proto")
+	}
 	comparePoints(t, intPoints, got)
 }
 
@@ -99,7 +102,10 @@ func TestMetricToPointDouble64(t *testing.T) {
 	timeseries := metricdata.TimeSeries{
 		Points: []metricdata.Point{metricdata.NewFloat64Point(timeNow, doubleVal)},
 	}
-	got := metricToPoints(&timeseries)
+	got, err := metricToPoints(&timeseries)
+	if err != nil {
+		t.Errorf("Error converting metric to timeseries proto")
+	}
 	comparePoints(t, doublePoints, got)
 }
 
@@ -126,7 +132,10 @@ func TestMetricToTimeSeries(t *testing.T) {
 		},
 	}
 
-	got := metricToTimeSeries(&metric)
+	got, err := metricToTimeSeries(&metric)
+	if err != nil {
+		t.Errorf("Error converting metric to timeseries proto")
+	}
 	compareMetricTimeseries(t, timeseries, got)
 }
 
@@ -209,7 +218,10 @@ func TestMetricToProto(t *testing.T) {
 		},
 	}
 
-	got := metricToProto(&metric)
+	got, err := metricToProto(&metric)
+	if err != nil {
+		t.Errorf("Error converting metric to proto")
+	}
 	compareMetricTimeseries(t, dummyMetric.Timeseries, got.Timeseries)
 	compareMetricDesc(t, dummyMetric.GetMetricDescriptor(), got.GetMetricDescriptor())
 }
@@ -240,7 +252,10 @@ func TestMetricToServiceRequest(t *testing.T) {
 			},
 		},
 	}
-	got := metricsToServiceRequest(metrics)
+	got, err := metricsToServiceRequest(metrics)
+	if err != nil {
+		t.Errorf("Error converting metrics to service proto ")
+	}
 	for i := range dummyServiceRequest.Metrics {
 		compareMetricTimeseries(t, dummyServiceRequest.Metrics[i].Timeseries, got.Metrics[i].Timeseries)
 		compareMetricDesc(t, dummyServiceRequest.Metrics[i].GetMetricDescriptor(), got.Metrics[i].GetMetricDescriptor())

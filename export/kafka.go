@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/pkg/errors"
 	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -55,16 +55,16 @@ type Kafka struct {
 }
 
 // NewKafka returns a new Kafka exporter
-func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) *ExporterAgent {
+func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig) (*ExporterAgent, error) {
 	if err := view.Register(messagesSentView, messagesDropedView); err != nil {
-		log.Printf("Problem registering views: %v", err)
+		return nil, errors.Wrap(err, "Error registering views")
 	}
 
 	createTopic(topicInfo, kafkaConfig)
 
 	producer, err := kafka.NewProducer(kafkaConfig)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "Error creating Kafka producer")
 	}
 
 	kafka := Kafka{
@@ -78,17 +78,16 @@ func NewKafka(config Config, kafkaConfig *kafka.ConfigMap, topicInfo TopicConfig
 
 	agent := newExporterAgent(kafka)
 	if err := agent.Start(kafka.config.reportingPeriodMilliseconds); err != nil {
-		panic(err)
+		return agent, errors.Wrap(err, "Error starting exporter")
 	}
 
-	return agent
+	return agent, nil
 }
 
-func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
+func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) error {
 	adminClient, err := kafka.NewAdminClient(kafkaConfig)
 	if err != nil {
-		fmt.Printf("Failed to create Admin client: %s\n", err)
-		os.Exit(1)
+		return errors.Wrap(err, "Failed to create Admin client")
 	}
 
 	// Contexts are used to abort or limit the amount of time
@@ -100,7 +99,7 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
 	// Set Admin options to wait for the operation to finish (or at most 60s)
 	maxDuration, err := time.ParseDuration("60s")
 	if err != nil {
-		panic("time.ParseDuration(60s)")
+		return errors.Wrap(err, "time.ParseDuration(60s)")
 	}
 
 	if topicInfo.NumPartitions != 0 && topicInfo.NumReplicas != 0 {
@@ -113,23 +112,20 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) {
 			kafka.SetAdminOperationTimeout(maxDuration))
 
 		if err != nil {
-			fmt.Printf("Problem during the topic creation: %v\n", err)
-			os.Exit(1)
+			return errors.Wrap(err, "Problem during the topic creation")
 		}
 
 		// Check for specific topic errors
 		for _, result := range results {
 			if result.Error.Code() != kafka.ErrNoError &&
 				result.Error.Code() != kafka.ErrTopicAlreadyExists {
-				fmt.Printf("Topic creation failed for %s: %v",
-					result.Topic, result.Error.String())
-				os.Exit(1)
+				return errors.Wrap(result.Error, fmt.Sprintf("Topic creation failed for topic %v", result.Topic))
 			}
 		}
 	}
 
 	adminClient.Close()
-
+	return nil
 }
 
 // Stop closes the Kafka producer.
@@ -153,10 +149,14 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 	for _, d := range data {
 		if matched, _ := regexp.Match(e.config.IncludeFilter, []byte(d.Descriptor.Name)); matched {
 			d.Resource, _ = TotDetector(ctx)
-			metricsRequestpb := metricToProto(d)
+			metricsRequestpb, err := metricToProto(d)
+			if err != nil {
+				return errors.Wrap(err, "Error converting metric to Proto")
+			}
+
 			payload, err := proto.Marshal(metricsRequestpb)
 			if err != nil {
-				log.Printf("Marshalling Error: %v", err)
+				return errors.Wrap(err, "Marshalling Error")
 			}
 
 			err = e.producer.Produce(&kafka.Message{
@@ -168,7 +168,7 @@ func (e Kafka) ExportMetrics(ctx context.Context, data []*metricdata.Metric) err
 			}, nil)
 
 			if err != nil {
-				log.Printf("Error sending message with Producer: %v", err)
+				return errors.Wrap(err, "Error sending message with Producer")
 			}
 		}
 	}

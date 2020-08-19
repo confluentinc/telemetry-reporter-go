@@ -36,7 +36,10 @@ var (
 )
 
 func TestNewKafka(t *testing.T) {
-	got := NewKafka(config, kafkaConfig, topicInfo)
+	got, err := NewKafka(config, kafkaConfig, topicInfo)
+	if err != nil {
+		t.Fatalf("Error creating new Kafka")
+	}
 	defer got.Stop()
 
 	gotKafka := got.Exporter.(Kafka)
@@ -45,8 +48,11 @@ func TestNewKafka(t *testing.T) {
 }
 
 func TestSetMessageFlushTime(t *testing.T) {
-	got := NewKafka(config, kafkaConfig, topicInfo)
+	got, err := NewKafka(config, kafkaConfig, topicInfo)
 	defer got.Stop()
+	if err != nil {
+		t.Errorf("Error creating new Kafka")
+	}
 	got.SetMessageFlushTime(newFlushTime)
 
 	gotKafka := got.Exporter.(Kafka)

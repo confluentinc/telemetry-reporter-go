@@ -59,7 +59,11 @@ var (
 )
 
 func TestNewHTTP(t *testing.T) {
-	got := NewHTTP(address, apiKey, apiSecret, config)
+	got, err := NewHTTP(address, apiKey, apiSecret, config)
+	if err != nil {
+		t.Errorf("Error creating NewHTTP")
+	}
+
 	got.AddHeader(map[string]string{"key": "val"})
 	defer got.Stop()
 
@@ -69,7 +73,12 @@ func TestNewHTTP(t *testing.T) {
 func TestExportMetrics(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		got, _ := ioutil.ReadAll(r.Body)
-		want, err := proto.Marshal(metricsToServiceRequest(metrics))
+		metricsRequest, err := metricsToServiceRequest(metrics)
+		if err != nil {
+			t.Errorf("Error exporting metrics")
+		}
+
+		want, err := proto.Marshal(metricsRequest)
 		if err != nil {
 			log.Fatal("Marshalling error: ", err)
 		}

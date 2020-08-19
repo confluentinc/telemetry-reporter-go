@@ -56,8 +56,11 @@ func main() {
 			2. reporting period in ms (10000 -> 10s)
 	*/
 	config := export.NewConfig(`.*`, 10000)
-	http := export.NewHTTP(address, apikey, apisecret, config)
+	http, err := export.NewHTTP(address, apikey, apisecret, config)
 	defer http.Stop()
+	if err != nil {
+		panic(err)
+	}
 
 	ctx, err := tag.New(context.Background(), tag.Insert(tag1, "val"))
 

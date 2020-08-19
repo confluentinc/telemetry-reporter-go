@@ -3,10 +3,10 @@ package export
 import (
 	"bytes"
 	"context"
-	"log"
 	"net/http"
 	"regexp"
 
+	"github.com/pkg/errors"
 	"go.opencensus.io/metric/metricdata"
 	"google.golang.org/protobuf/proto"
 )
@@ -23,7 +23,7 @@ type HTTP struct {
 }
 
 // NewHTTP returns a new exporter agent with an HTTP exporter attached
-func NewHTTP(address string, apiKey string, apiSecret string, config Config) *ExporterAgent {
+func NewHTTP(address string, apiKey string, apiSecret string, config Config) (*ExporterAgent, error) {
 	headerMap := map[string]string{
 		"Content-Type": "application/x-protobuf",
 	}
@@ -39,10 +39,10 @@ func NewHTTP(address string, apiKey string, apiSecret string, config Config) *Ex
 
 	agent := newExporterAgent(exporter)
 	if err := agent.Start(exporter.config.reportingPeriodMilliseconds); err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "Couldn't Start Exporter")
 	}
 
-	return agent
+	return agent, nil
 }
 
 // AddHeader adds a map of headers to the exporter for its HTTP request.
@@ -65,18 +65,24 @@ func (e HTTP) ExportMetrics(ctx context.Context, data []*metricdata.Metric) erro
 		}
 	}
 
-	metricsRequestProto := metricsToServiceRequest(includeData)
-	payload, err := proto.Marshal(metricsRequestProto)
+	metricsRequestProto, err := metricsToServiceRequest(includeData)
 	if err != nil {
-		log.Printf("Marshalling error: %v", err)
+		return errors.Wrap(err, "Error converting metric to Proto")
 	}
 
-	e.postMetrics(payload)
+	payload, err := proto.Marshal(metricsRequestProto)
+	if err != nil {
+		return errors.Wrap(err, "Marshalling error")
+	}
+
+	if err := e.postMetrics(payload); err != nil {
+		return errors.Wrap(err, "Error sending metrics")
+	}
 
 	return nil
 }
 
-func (e HTTP) postMetrics(payload []byte) {
+func (e HTTP) postMetrics(payload []byte) error {
 	req, _ := http.NewRequest("POST", e.address, bytes.NewBuffer(payload))
 	req.SetBasicAuth(e.apiKey, e.apiSecret)
 
@@ -86,9 +92,9 @@ func (e HTTP) postMetrics(payload []byte) {
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		log.Printf("Error sending request: %v", err)
+		return errors.Wrap(err, "Error sending request")
 	}
 
-	log.Println(resp)
 	defer resp.Body.Close()
+	return nil
 }

@@ -8,29 +8,41 @@ import (
 	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/pkg/errors"
 	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/resource"
 )
 
-func metricsToServiceRequest(ms []*metricdata.Metric) *a1.ExportMetricsServiceRequest {
+func metricsToServiceRequest(ms []*metricdata.Metric) (*a1.ExportMetricsServiceRequest, error) {
 	metrics := []*v1.Metric{}
 
 	for _, m := range ms {
-		toAppend := metricToProto(m)
+		toAppend, err := metricToProto(m)
+
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Error convert metric %v to proto", m))
+		}
+
 		metrics = append(metrics, toAppend)
 	}
 
 	return &a1.ExportMetricsServiceRequest{
 		Metrics: metrics,
-	}
+	}, nil
 }
 
-func metricToProto(m *metricdata.Metric) *v1.Metric {
+func metricToProto(m *metricdata.Metric) (*v1.Metric, error) {
+	timeseries, err := metricToTimeSeries(m)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &v1.Metric{
 		MetricDescriptor: metricToDescriptor(m),
-		Timeseries:       metricToTimeSeries(m),
+		Timeseries:       timeseries,
 		Resource:         resourceToProto(m.Resource),
-	}
+	}, nil
 }
 
 func metricToLabelKeys(m *metricdata.Metric) []*v1.LabelKey {
@@ -79,22 +91,27 @@ func resourceToProto(r *resource.Resource) *r1.Resource {
 
 }
 
-func metricToTimeSeries(m *metricdata.Metric) []*v1.TimeSeries {
+func metricToTimeSeries(m *metricdata.Metric) ([]*v1.TimeSeries, error) {
 	timeSeries := []*v1.TimeSeries{}
 
 	for _, ts := range m.TimeSeries {
 		timestamp, _ := ptypes.TimestampProto(ts.StartTime)
+		points, err := metricToPoints(ts)
+
+		if err != nil {
+			return nil, err
+		}
 
 		toAppend := &v1.TimeSeries{
 			StartTimestamp: timestamp,
 			LabelValues:    metricToLabelValues(ts),
-			Points:         metricToPoints(ts),
+			Points:         points,
 		}
 
 		timeSeries = append(timeSeries, toAppend)
 	}
 
-	return timeSeries
+	return timeSeries, nil
 }
 
 func metricToLabelValues(t *metricdata.TimeSeries) []*v1.LabelValue {
@@ -112,7 +129,7 @@ func metricToLabelValues(t *metricdata.TimeSeries) []*v1.LabelValue {
 	return labelValues
 }
 
-func metricToPoints(t *metricdata.TimeSeries) []*v1.Point {
+func metricToPoints(t *metricdata.TimeSeries) ([]*v1.Point, error) {
 	points := []*v1.Point{}
 
 	for _, p := range t.Points {
@@ -139,13 +156,13 @@ func metricToPoints(t *metricdata.TimeSeries) []*v1.Point {
 				DistributionValue: pointToDistributionValue(v),
 			}
 		default:
-			panic("unsupported value type")
+			return nil, errors.New("Unsupported value type")
 		}
 
 		points = append(points, toAppend)
 	}
 
-	return points
+	return points, nil
 }
 
 func pointToSummaryValue(value *metricdata.Summary) *v1.SummaryValue {
