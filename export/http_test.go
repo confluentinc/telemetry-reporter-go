@@ -70,7 +70,7 @@ func TestNewHTTP(t *testing.T) {
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))
 }
 
-func TestExportMetrics(t *testing.T) {
+func TestHTTPExportMetrics(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		got, _ := ioutil.ReadAll(r.Body)
 		metricsRequest, err := metricsToServiceRequest(metrics)
