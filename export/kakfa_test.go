@@ -83,17 +83,39 @@ func TestKafkaCreateTopic(t *testing.T) {
 	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "false", kafkaPort)
 	defer kafkaServer.Terminate(context.Background())
 
-	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
-	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't get kafka server's port")
-	}
-
-	kafkaConfig := &kafka.ConfigMap{
-		"bootstrap.servers": port,
-	}
+	kafkaConfig := getKafkaConfig(t, kafkaServer, kafkaPort)
 
 	if err := createTopic(topicInfo, kafkaConfig); err != nil {
 		t.Errorf("Couldn't create topic: %v", err)
+	}
+}
+
+func TestKafkaExportMetrics(t *testing.T) {
+	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
+	defer removeDockerNetwork(t, cli, network)
+
+	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
+	defer zookeeper.Terminate(context.Background())
+
+	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "true", kafkaPort)
+	defer kafkaServer.Terminate(context.Background())
+
+	kafkaConfig := getKafkaConfig(t, kafkaServer, kafkaPort)
+
+	producer, err := kafka.NewProducer(kafkaConfig)
+	if err != nil {
+		t.Errorf("Kafka Export Metrics Failed, couldn't create producer: %v", err)
+	}
+
+	exportKafka := Kafka{
+		config:    config,
+		producer:  producer,
+		topicInfo: topicInfo,
+	}
+
+	err = exportKafka.ExportMetrics(context.Background(), metrics)
+	if err != nil {
+		t.Errorf("Kafka Export Metrics Failed, couldn't export metrics: %v", err)
 	}
 }
 
@@ -183,40 +205,17 @@ func startKafkaContainer(
 	return kafkaServer
 }
 
-func TestKafkaExportMetrics(t *testing.T) {
-	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
-	defer removeDockerNetwork(t, cli, network)
-
-	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
-	defer zookeeper.Terminate(context.Background())
-
-	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "true", kafkaPort)
-	defer kafkaServer.Terminate(context.Background())
-
+func getKafkaConfig(t *testing.T, kafkaServer testcontainers.Container, kafkaPort string) *kafka.ConfigMap {
 	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
 	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't get kafka server's port")
+		t.Errorf("Failed to get kafka server container's port")
 	}
 
 	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers": port,
 	}
 
-	producer, err := kafka.NewProducer(kafkaConfig)
-	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't create producer: %v", err)
-	}
-
-	exportKafka := Kafka{
-		config:    config,
-		producer:  producer,
-		topicInfo: topicInfo,
-	}
-
-	err = exportKafka.ExportMetrics(context.Background(), metrics)
-	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't export metrics: %v", err)
-	}
+	return kafkaConfig
 }
 
 func compareKafka(t *testing.T, want Kafka, got Kafka) {
