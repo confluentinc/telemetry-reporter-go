@@ -23,6 +23,10 @@ var (
 	}
 
 	topicInfo = TopicConfig{
+		Topic: topicName,
+	}
+
+	topicCreationInfo = TopicConfig{
 		Topic:         topicName,
 		NumReplicas:   1,
 		NumPartitions: 1,
@@ -53,7 +57,7 @@ var (
 func TestNewKafka(t *testing.T) {
 	got, err := NewKafka(config, kafkaConfig, topicInfo)
 	if err != nil {
-		t.Fatalf("Error creating new Kafka")
+		t.Errorf("Error creating new Kafka: %v", err)
 	}
 	got.Stop()
 
@@ -65,7 +69,7 @@ func TestSetMessageFlushTime(t *testing.T) {
 	got, err := NewKafka(config, kafkaConfig, topicInfo)
 	defer got.Stop()
 	if err != nil {
-		t.Errorf("Error creating new Kafka")
+		t.Errorf("Error creating new Kafka: %v", err)
 	}
 	got.SetMessageFlushTime(newFlushTime)
 
@@ -85,8 +89,8 @@ func TestKafkaCreateTopic(t *testing.T) {
 
 	kafkaConfig := getKafkaConfig(t, kafkaServer, kafkaPort)
 
-	if err := createTopic(topicInfo, kafkaConfig); err != nil {
-		t.Errorf("Couldn't create topic: %v", err)
+	if err := createTopic(topicCreationInfo, kafkaConfig); err != nil {
+		t.Errorf("Failed to create topic: %v", err)
 	}
 }
 
@@ -220,18 +224,18 @@ func getKafkaConfig(t *testing.T, kafkaServer testcontainers.Container, kafkaPor
 
 func compareKafka(t *testing.T, want Kafka, got Kafka) {
 	if want.config != got.config {
-		t.Fatalf("New Kafka failed, expected config %v, got %v", want.config, got.config)
+		t.Errorf("New Kafka failed, expected config %v, got %v", want.config, got.config)
 	}
 
 	if eq := reflect.DeepEqual(*want.kafkaConfig, *got.kafkaConfig); !eq {
-		t.Fatalf("New Kafka failed, expected kafka config %v, got %v", want.kafkaConfig, got.kafkaConfig)
+		t.Errorf("New Kafka failed, expected kafka config %v, got %v", want.kafkaConfig, got.kafkaConfig)
 	}
 
 	if want.topicInfo.Topic != got.topicInfo.Topic {
-		t.Fatalf("New Kafka failed, expected topic %v, got %v", want.topicInfo.Topic, got.topicInfo.Topic)
+		t.Errorf("New Kafka failed, expected topic %v, got %v", want.topicInfo.Topic, got.topicInfo.Topic)
 	}
 
 	if want.messageFlushTimeSec != got.messageFlushTimeSec {
-		t.Fatalf("New Kafka failed, expected messageFlushTime %v, got %v", want.messageFlushTimeSec, got.messageFlushTimeSec)
+		t.Errorf("New Kafka failed, expected messageFlushTime %v, got %v", want.messageFlushTimeSec, got.messageFlushTimeSec)
 	}
 }

@@ -35,20 +35,20 @@ func TestStdoutExportMetrics(t *testing.T) {
 
 	log.SetOutput(os.Stderr)
 	if !strings.Contains(buf.String(), dummyName) {
-		t.Fatalf("Stdout Export Metrics failed, could not find %v", dummyName)
+		t.Errorf("Stdout Export Metrics failed, could not find %v", dummyName)
 	}
 
 	if !strings.Contains(buf.String(), dummyDesc) {
-		t.Fatalf("Stdout Export Metrics failed, could not find %v", dummyDesc)
+		t.Errorf("Stdout Export Metrics failed, could not find %v", dummyDesc)
 	}
 
 	if !strings.Contains(buf.String(), strconv.Itoa(int(intVal))) {
-		t.Fatalf("Stdout Export Metrics failed, could not find %v", strconv.Itoa(int(intVal)))
+		t.Errorf("Stdout Export Metrics failed, could not find %v", strconv.Itoa(int(intVal)))
 	}
 }
 
 func compareStdout(t *testing.T, want Stdout, got Stdout) {
 	if want.config != got.config {
-		t.Fatalf("New Stdout failed, expected config %v, got %v", want.config, got.config)
+		t.Errorf("New Stdout failed, expected config %v, got %v", want.config, got.config)
 	}
 }
