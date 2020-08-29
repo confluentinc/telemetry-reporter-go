@@ -23,7 +23,9 @@ var (
 	}
 
 	topicInfo = TopicConfig{
-		Topic: topicName,
+		Topic:         topicName,
+		NumReplicas:   1,
+		NumPartitions: 1,
 	}
 
 	kafkaExporter = &Kafka{
@@ -72,73 +74,13 @@ func TestSetMessageFlushTime(t *testing.T) {
 }
 
 func TestKafkaCreateTopic(t *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
+	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
+	defer removeDockerNetwork(t, cli, network)
 
-	network, err := cli.NetworkCreate(context.Background(), "kafka_export_metrics_network", types.NetworkCreate{})
-	if err != nil {
-		t.Errorf("Failed to Create Docker network: %v", err)
-	}
-
-	defer func() {
-		if err = cli.NetworkRemove(context.Background(), network.ID); err != nil {
-			panic(err)
-		}
-	}()
-
-	req := testcontainers.ContainerRequest{
-		Name:         "zookeeper-server",
-		Image:        zookeeperImage,
-		ExposedPorts: []string{zookeeperPort},
-		WaitingFor:   wait.ForListeningPort(nat.Port(zookeeperPort)),
-		Networks:     []string{"kafka_export_metrics_network"},
-		Env: map[string]string{
-			"ZOOKEEPER_CLIENT_PORT": zookeeperPort,
-			"ALLOW_ANONYMOUS_LOGIN": "yes",
-		},
-	}
-
-	zookeeper, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-
-	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't start zookeeper image: %v", err)
-	}
-
+	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
 	defer zookeeper.Terminate(context.Background())
 
-	req = testcontainers.ContainerRequest{
-		Image:        kafkaImage,
-		ExposedPorts: []string{"127.0.0.1:" + kafkaPort + ":" + kafkaPort},
-		WaitingFor:   wait.ForListeningPort(nat.Port(kafkaPort)),
-		Networks:     []string{"kafka_export_metrics_network"},
-		Env: map[string]string{
-			"KAFKA_BROKER_ID":                                  "1",
-			"KAFKA_ADVERTISED_LISTENERS":                       "PLAINTEXT_HOST://localhost:" + kafkaPort,
-			"KAFKA_ZOOKEEPER_CONNECT":                          "zookeeper-server:2181",
-			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":             "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
-			"KAFKA_INTER_BROKER_LISTENER_NAME":                 "PLAINTEXT_HOST",
-			"KAFKA_AUTO_CREATE_TOPICS_ENABLE":                  "false",
-			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":           "1",
-			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":              "1",
-			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR":   "1",
-			"KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR": "1",
-			"CONFLUENT_METRICS_ENABLE":                         "false",
-		},
-	}
-
-	kafkaServer, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-
-	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't start kafka image: %v", err)
-	}
+	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "false", kafkaPort)
 	defer kafkaServer.Terminate(context.Background())
 
 	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
@@ -148,12 +90,6 @@ func TestKafkaCreateTopic(t *testing.T) {
 
 	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers": port,
-	}
-
-	topicInfo := TopicConfig{
-		Topic:         "test",
-		NumReplicas:   1,
-		NumPartitions: 1,
 	}
 
 	if err := createTopic(topicInfo, kafkaConfig); err != nil {
@@ -161,31 +97,35 @@ func TestKafkaCreateTopic(t *testing.T) {
 	}
 }
 
-func TestKafkaExportMetrics(t *testing.T) {
+func createDockerNetwork(t *testing.T, networkName string) (*client.Client, types.NetworkCreateResponse) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		panic(err)
+		t.Errorf("Failed to create Docker client: %v", err)
 	}
 
-	network, err := cli.NetworkCreate(context.Background(), "kafka_export_metrics_network", types.NetworkCreate{})
+	network, err := cli.NetworkCreate(context.Background(), networkName, types.NetworkCreate{})
 	if err != nil {
-		t.Errorf("Failed to Create Docker network: %v", err)
+		t.Errorf("Failed to create Docker network: %v", err)
 	}
 
-	defer func() {
-		if err = cli.NetworkRemove(context.Background(), network.ID); err != nil {
-			panic(err)
-		}
-	}()
+	return cli, network
+}
 
+func removeDockerNetwork(t *testing.T, cli *client.Client, network types.NetworkCreateResponse) {
+	if err := cli.NetworkRemove(context.Background(), network.ID); err != nil {
+		t.Errorf("Failed to remove Docker network: %v", err)
+	}
+}
+
+func startZookeeperContainer(t *testing.T, image string, containerName string, network string, port string) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
-		Name:         "zookeeper-server",
-		Image:        zookeeperImage,
-		ExposedPorts: []string{zookeeperPort},
-		WaitingFor:   wait.ForListeningPort(nat.Port(zookeeperPort)),
-		Networks:     []string{"kafka_export_metrics_network"},
+		Name:         containerName,
+		Image:        image,
+		ExposedPorts: []string{port},
+		WaitingFor:   wait.ForListeningPort(nat.Port(port)),
+		Networks:     []string{network},
 		Env: map[string]string{
-			"ZOOKEEPER_CLIENT_PORT": zookeeperPort,
+			"ZOOKEEPER_CLIENT_PORT": port,
 			"ALLOW_ANONYMOUS_LOGIN": "yes",
 		},
 	}
@@ -196,23 +136,33 @@ func TestKafkaExportMetrics(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't start zookeeper image: %v", err)
+		t.Errorf("Failed to start zookeeper container: %v", err)
 	}
 
-	defer zookeeper.Terminate(context.Background())
+	return zookeeper
+}
 
-	req = testcontainers.ContainerRequest{
-		Image:        kafkaImage,
-		ExposedPorts: []string{"127.0.0.1:" + kafkaPort + ":" + kafkaPort},
-		WaitingFor:   wait.ForListeningPort(nat.Port(kafkaPort)),
-		Networks:     []string{"kafka_export_metrics_network"},
+func startKafkaContainer(
+	t *testing.T,
+	image string,
+	network string,
+	zookeeperContainerName string,
+	zookeeperPort string,
+	kafkaAutoCreateTopic string,
+	port string,
+) testcontainers.Container {
+	req := testcontainers.ContainerRequest{
+		Image:        image,
+		ExposedPorts: []string{"127.0.0.1:" + port + ":" + port},
+		WaitingFor:   wait.ForListeningPort(nat.Port(port)),
+		Networks:     []string{network},
 		Env: map[string]string{
 			"KAFKA_BROKER_ID":                                  "1",
-			"KAFKA_ADVERTISED_LISTENERS":                       "PLAINTEXT_HOST://localhost:" + kafkaPort,
-			"KAFKA_ZOOKEEPER_CONNECT":                          "zookeeper-server:2181",
+			"KAFKA_ADVERTISED_LISTENERS":                       "PLAINTEXT_HOST://localhost:" + port,
+			"KAFKA_ZOOKEEPER_CONNECT":                          zookeeperContainerName + ":" + zookeeperPort,
 			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":             "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
 			"KAFKA_INTER_BROKER_LISTENER_NAME":                 "PLAINTEXT_HOST",
-			"KAFKA_AUTO_CREATE_TOPICS_ENABLE":                  "true",
+			"KAFKA_AUTO_CREATE_TOPICS_ENABLE":                  kafkaAutoCreateTopic,
 			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":           "1",
 			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":              "1",
 			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR":   "1",
@@ -227,8 +177,20 @@ func TestKafkaExportMetrics(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't start kafka image: %v", err)
+		t.Errorf("Failed to start kafka container: %v", err)
 	}
+
+	return kafkaServer
+}
+
+func TestKafkaExportMetrics(t *testing.T) {
+	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
+	defer removeDockerNetwork(t, cli, network)
+
+	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
+	defer zookeeper.Terminate(context.Background())
+
+	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "true", kafkaPort)
 	defer kafkaServer.Terminate(context.Background())
 
 	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
@@ -238,10 +200,6 @@ func TestKafkaExportMetrics(t *testing.T) {
 
 	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers": port,
-	}
-
-	topicInfo := TopicConfig{
-		Topic: "test",
 	}
 
 	producer, err := kafka.NewProducer(kafkaConfig)
