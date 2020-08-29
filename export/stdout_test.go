@@ -18,7 +18,7 @@ var (
 
 func TestNewStdout(t *testing.T) {
 	got, err := NewStdout(config)
-	defer got.Stop()
+	got.Stop()
 	if err != nil {
 		t.Errorf("Error creating new Stdout")
 	}
