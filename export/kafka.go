@@ -133,7 +133,7 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) error {
 
 // Stop closes the Kafka producer.
 func (e Kafka) Stop() {
-	defer e.producer.Close()
+	e.producer.Close()
 }
 
 // SetMessageFlushTime sets the time to wait to flush the

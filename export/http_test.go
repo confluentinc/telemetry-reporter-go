@@ -9,18 +9,18 @@ import (
 	"reflect"
 	"testing"
 
-	"go.opencensus.io/metric/metricdata"
 	"google.golang.org/protobuf/proto"
 )
 
 var (
-	address   = ""
-	apiKey    = ""
-	apiSecret = ""
+	address   = "address"
+	apiKey    = "key"
+	apiSecret = "secret"
 	headerMap = map[string]string{
 		"Content-Type": "application/x-protobuf",
 		"key":          "val",
 	}
+	exportPort = ":8081"
 
 	dummyHTTP = HTTP{
 		address:   address,
@@ -30,52 +30,26 @@ var (
 		client:    &http.Client{},
 		config:    config,
 	}
-
-	metrics = []*metricdata.Metric{
-		&metricdata.Metric{
-			Descriptor: metricdata.Descriptor{
-				Name:        dummyName,
-				Description: dummyDesc,
-				Unit:        metricdata.Unit(dummyUnit),
-				Type:        metricdata.Type(dummyType),
-				LabelKeys: []metricdata.LabelKey{
-					metricdata.LabelKey{
-						Key:         dummyLabelKey,
-						Description: dummyKeyDesc,
-					},
-				},
-			},
-			TimeSeries: []*metricdata.TimeSeries{
-				&metricdata.TimeSeries{
-					LabelValues: []metricdata.LabelValue{
-						metricdata.NewLabelValue(dummyLabelVal),
-					},
-					Points:    []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
-					StartTime: timeNow,
-				},
-			},
-		},
-	}
 )
 
-func TestNewHTTP(t *testing.T) {
+func TestNewHTTPAddHeader(t *testing.T) {
 	got, err := NewHTTP(address, apiKey, apiSecret, config)
 	if err != nil {
 		t.Errorf("Error creating NewHTTP")
 	}
 
 	got.AddHeader(map[string]string{"key": "val"})
-	defer got.Stop()
+	got.Stop()
 
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))
 }
 
-func TestExportMetrics(t *testing.T) {
+func TestHTTPExportMetrics(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		got, _ := ioutil.ReadAll(r.Body)
 		metricsRequest, err := metricsToServiceRequest(metrics)
 		if err != nil {
-			t.Errorf("Error exporting metrics")
+			t.Errorf("Error exporting metrics: %v", err)
 		}
 
 		want, err := proto.Marshal(metricsRequest)
@@ -89,11 +63,11 @@ func TestExportMetrics(t *testing.T) {
 	})
 
 	go func() {
-		log.Fatal(http.ListenAndServe(":8081", nil))
+		log.Fatal(http.ListenAndServe(exportPort, nil))
 	}()
 
 	exportHTTP := HTTP{
-		address: "http://localhost:8081",
+		address: "http://localhost" + exportPort,
 		client:  &http.Client{},
 		config:  config,
 	}
