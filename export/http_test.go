@@ -58,19 +58,19 @@ var (
 	}
 )
 
-func TestNewHTTP(t *testing.T) {
+func TestNewHTTPAddHeader(t *testing.T) {
 	got, err := NewHTTP(address, apiKey, apiSecret, config)
 	if err != nil {
 		t.Errorf("Error creating NewHTTP")
 	}
 
 	got.AddHeader(map[string]string{"key": "val"})
-	defer got.Stop()
+	got.Stop()
 
 	compareHTTP(t, dummyHTTP, got.Exporter.(HTTP))
 }
 
-func TestExportMetrics(t *testing.T) {
+func TestHTTPExportMetrics(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		got, _ := ioutil.ReadAll(r.Body)
 		metricsRequest, err := metricsToServiceRequest(metrics)
