@@ -58,7 +58,7 @@ var (
 	}
 )
 
-func TestNewHTTP(t *testing.T) {
+func TestNewHTTPAddHeader(t *testing.T) {
 	got, err := NewHTTP(address, apiKey, apiSecret, config)
 	if err != nil {
 		t.Errorf("Error creating NewHTTP")

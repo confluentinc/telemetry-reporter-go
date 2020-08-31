@@ -12,6 +12,7 @@ import (
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 var (
@@ -107,6 +108,46 @@ func TestMetricToPointDouble64(t *testing.T) {
 		t.Errorf("Error converting metric to timeseries proto")
 	}
 	comparePoints(t, doublePoints, got)
+}
+
+func TestMetricToPointSummary(t *testing.T) {
+	snapshot := metricdata.Snapshot{
+		Count:       0,
+		Sum:         0,
+		Percentiles: map[float64]float64{},
+	}
+	sumVal := &metricdata.Summary{
+		Count:          intVal,
+		Sum:            doubleVal,
+		HasCountAndSum: true,
+		Snapshot:       snapshot,
+	}
+	timeseries := metricdata.TimeSeries{
+		Points: []metricdata.Point{metricdata.NewSummaryPoint(timeNow, sumVal)},
+	}
+
+	sumProto := []*v1.Point{
+		&v1.Point{
+			Timestamp: timestamp,
+			Value: &v1.Point_SummaryValue{
+				SummaryValue: &v1.SummaryValue{
+					Count: &wrappers.Int64Value{Value: intVal},
+					Sum:   &wrappers.DoubleValue{Value: doubleVal},
+					Snapshot: &v1.SummaryValue_Snapshot{
+						Count:            &wrappers.Int64Value{Value: 0},
+						Sum:              &wrappers.DoubleValue{Value: 0},
+						PercentileValues: []*v1.SummaryValue_Snapshot_ValueAtPercentile{},
+					},
+				},
+			},
+		},
+	}
+
+	got, err := metricToPoints(&timeseries)
+	if err != nil {
+		t.Errorf("Error converting metric to timeseries proto")
+	}
+	comparePoints(t, sumProto, got)
 }
 
 func TestMetricToLabelValues(t *testing.T) {
@@ -281,8 +322,11 @@ func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point) {
 			if val.DoubleValue != got[i].GetDoubleValue() {
 				t.Errorf("Metric to Points double failed, expected val %v, got %v", val.DoubleValue, got[i].GetDoubleValue())
 			}
+		case *v1.Point_SummaryValue:
+			if !reflect.DeepEqual(*want[i].GetSummaryValue(), *got[i].GetSummaryValue()) {
+				t.Errorf("Metric to Points summary failed, expected val %v, got %v", val.SummaryValue, got[i].GetSummaryValue())
+			}
 		}
-
 	}
 }
 
