@@ -4,17 +4,27 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
+global_job_config:
+  prologue:
+    commands:
+      - sem-version go 1.11
+      - export GO111MODULE=on
+      - export GOPATH=$(go env GOPATH)
+      - 'export PATH=/home/semaphore/go/bin:$GOPATH/bin:$PATH'
+      - checkout
+      - go get ./...
 blocks:
-  - name: Test
+  - name: lint
     task:
       jobs:
-        - name: go test
+        - name: lint job
           commands:
-            - sem-version go 1.11
-            - export GO111MODULE=on
-            - export GOPATH=$(go env GOPATH)
-            - 'export PATH=/home/semaphore/go/bin:$GOPATH/bin:$PATH'
-            - checkout
-            - go get ./...
+            - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.30.0
+            - golangci-lint run
+  - name: build and test
+    task:
+      jobs:
+        - name: build and test job
+          commands:
             - go build ./...
             - go test ./... -v
