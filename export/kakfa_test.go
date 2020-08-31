@@ -14,6 +14,15 @@ import (
 )
 
 var (
+	zookeeperImage         = "confluentinc/cp-zookeeper:5.5.1"
+	zookeeperPort          = "2181"
+	kafkaImage             = "confluentinc/cp-server:5.5.1"
+	kafkaPort              = "9092"
+	dockerNetwork          = "kafka_export_metrics_network"
+	zookeeperContainerName = "zookeeper-server"
+)
+
+var (
 	topicName        = "test"
 	newFlushTime     = 20
 	defaultFlushTime = 15
@@ -47,13 +56,6 @@ var (
 	}
 )
 
-var (
-	zookeeperImage = "confluentinc/cp-zookeeper:5.5.1"
-	zookeeperPort  = "2181"
-	kafkaImage     = "confluentinc/cp-server:5.5.1"
-	kafkaPort      = "9092"
-)
-
 func TestNewKafka(t *testing.T) {
 	got, err := NewKafka(config, kafkaConfig, topicInfo)
 	if err != nil {
@@ -78,14 +80,14 @@ func TestSetMessageFlushTime(t *testing.T) {
 }
 
 func TestKafkaCreateTopic(t *testing.T) {
-	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
+	cli, network := createDockerNetwork(t, dockerNetwork)
 	defer removeDockerNetwork(t, cli, network)
 
-	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
-	defer zookeeper.Terminate(context.Background())
+	zookeeper := startZookeeperContainer(t, zookeeperImage, zookeeperContainerName, dockerNetwork, zookeeperPort)
+	defer shutdownContainer(t, zookeeper)
 
-	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "false", kafkaPort)
-	defer kafkaServer.Terminate(context.Background())
+	kafkaServer := startKafkaContainer(t, kafkaImage, dockerNetwork, zookeeperContainerName, zookeeperPort, "false", kafkaPort)
+	defer shutdownContainer(t, kafkaServer)
 
 	kafkaConfig := getKafkaConfig(t, kafkaServer, kafkaPort)
 
@@ -95,14 +97,14 @@ func TestKafkaCreateTopic(t *testing.T) {
 }
 
 func TestKafkaExportMetrics(t *testing.T) {
-	cli, network := createDockerNetwork(t, "kafka_export_metrics_network")
+	cli, network := createDockerNetwork(t, dockerNetwork)
 	defer removeDockerNetwork(t, cli, network)
 
-	zookeeper := startZookeeperContainer(t, zookeeperImage, "zookeeper-server", "kafka_export_metrics_network", zookeeperPort)
-	defer zookeeper.Terminate(context.Background())
+	zookeeper := startZookeeperContainer(t, zookeeperImage, zookeeperContainerName, dockerNetwork, zookeeperPort)
+	defer shutdownContainer(t, zookeeper)
 
-	kafkaServer := startKafkaContainer(t, kafkaImage, "kafka_export_metrics_network", "zookeeper-server", zookeeperPort, "true", kafkaPort)
-	defer kafkaServer.Terminate(context.Background())
+	kafkaServer := startKafkaContainer(t, kafkaImage, dockerNetwork, zookeeperContainerName, zookeeperPort, "true", kafkaPort)
+	defer shutdownContainer(t, kafkaServer)
 
 	kafkaConfig := getKafkaConfig(t, kafkaServer, kafkaPort)
 
@@ -212,7 +214,7 @@ func startKafkaContainer(
 func getKafkaConfig(t *testing.T, kafkaServer testcontainers.Container, kafkaPort string) *kafka.ConfigMap {
 	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
 	if err != nil {
-		t.Errorf("Failed to get kafka server container's port")
+		t.Errorf("Failed to get kafka server container's port: %v", err)
 	}
 
 	kafkaConfig := &kafka.ConfigMap{
@@ -220,6 +222,12 @@ func getKafkaConfig(t *testing.T, kafkaServer testcontainers.Container, kafkaPor
 	}
 
 	return kafkaConfig
+}
+
+func shutdownContainer(t *testing.T, container testcontainers.Container) {
+	if err := container.Terminate(context.Background()); err != nil {
+		t.Errorf("Failed to stop container: %v", err)
+	}
 }
 
 func compareKafka(t *testing.T, want Kafka, got Kafka) {

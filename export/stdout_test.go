@@ -31,7 +31,9 @@ func TestStdoutExportMetrics(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 
-	stdoutExporter.ExportMetrics(context.Background(), metrics)
+	if err := stdoutExporter.ExportMetrics(context.Background(), metrics); err != nil {
+		t.Errorf("Stdout Export Metrics failed: %v", err)
+	}
 
 	log.SetOutput(os.Stderr)
 	if !strings.Contains(buf.String(), dummyName) {
