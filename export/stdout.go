@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/pkg/errors"
 	"go.opencensus.io/metric/metricdata"
 )
 
@@ -13,10 +14,17 @@ type Stdout struct {
 }
 
 // NewStdout returns a new Stdout exporter.
-func NewStdout(config Config) Stdout {
-	return Stdout{
+func NewStdout(config Config) (*ExporterAgent, error) {
+	exporter := Stdout{
 		config: config,
 	}
+
+	agent := newExporterAgent(exporter)
+	if err := agent.Start(exporter.config.reportingPeriodMilliseconds); err != nil {
+		return nil, errors.Wrap(err, "Couldn't Start Exporter")
+	}
+
+	return agent, nil
 }
 
 // ExportMetrics prints the metrics' names, description, and values.
