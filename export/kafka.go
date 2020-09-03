@@ -133,6 +133,10 @@ func createTopic(topicInfo TopicConfig, kafkaConfig *kafka.ConfigMap) error {
 
 // Stop closes the Kafka producer.
 func (e Kafka) Stop() {
+	if e.producer == nil {
+		return
+	}
+
 	e.producer.Close()
 }
 
