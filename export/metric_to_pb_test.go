@@ -3,7 +3,6 @@ package export
 import (
 	"reflect"
 	"testing"
-	"time"
 
 	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/resource"
@@ -11,22 +10,10 @@ import (
 	a1 "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	v1 "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	r1 "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
-	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 var (
-	timeNow       = time.Now()
-	timestamp, _  = ptypes.TimestampProto(timeNow)
-	intVal        = int64(10)
-	doubleVal     = 12.345
-	dummyLabelVal = "Val"
-	dummyName     = "metric"
-	dummyDesc     = "desc"
-	dummyUnit     = "ms"
-	dummyType     = 4
-	dummyLabelKey = "Key"
-	dummyKeyDesc  = "key desc"
-
 	intPoints = []*v1.Point{
 		&v1.Point{
 			Timestamp: timestamp,
@@ -45,44 +32,61 @@ var (
 		},
 	}
 
-	labelVals = []*v1.LabelValue{
+	summaryPoints = []*v1.Point{
+		&v1.Point{
+			Timestamp: timestamp,
+			Value: &v1.Point_SummaryValue{
+				SummaryValue: &v1.SummaryValue{
+					Count: &wrappers.Int64Value{Value: intVal},
+					Sum:   &wrappers.DoubleValue{Value: doubleVal},
+					Snapshot: &v1.SummaryValue_Snapshot{
+						Count:            &wrappers.Int64Value{Value: 0},
+						Sum:              &wrappers.DoubleValue{Value: 0},
+						PercentileValues: []*v1.SummaryValue_Snapshot_ValueAtPercentile{},
+					},
+				},
+			},
+		},
+	}
+
+	labelValsProto = []*v1.LabelValue{
 		&v1.LabelValue{
 			Value:    dummyLabelVal,
 			HasValue: true,
 		},
 	}
 
-	timeseries = []*v1.TimeSeries{
+	timeseriesProto = []*v1.TimeSeries{
 		&v1.TimeSeries{
 			StartTimestamp: timestamp,
-			LabelValues:    labelVals,
+			LabelValues:    labelValsProto,
 			Points:         intPoints,
 		},
 	}
 
-	labelKeys = []*v1.LabelKey{
+	labelKeysProto = []*v1.LabelKey{
 		&v1.LabelKey{
 			Key:         dummyLabelKey,
 			Description: dummyKeyDesc,
 		},
 	}
 
-	descriptor = &v1.MetricDescriptor{
+	descriptorProto = &v1.MetricDescriptor{
 		Name:        dummyName,
 		Description: dummyDesc,
 		Unit:        dummyUnit,
 		Type:        v1.MetricDescriptor_Type(dummyType + 1),
-		LabelKeys:   labelKeys,
+		LabelKeys:   labelKeysProto,
 	}
 
-	dummyMetric = &v1.Metric{
-		MetricDescriptor: descriptor,
-		Timeseries:       timeseries,
+	dummyMetricProto = &v1.Metric{
+		MetricDescriptor: descriptorProto,
+		Timeseries:       timeseriesProto,
 	}
 
-	dummyServiceRequest = &a1.ExportMetricsServiceRequest{
+	dummyServiceRequestProto = &a1.ExportMetricsServiceRequest{
 		Metrics: []*v1.Metric{
-			dummyMetric,
+			dummyMetricProto,
 		},
 	}
 )
@@ -93,7 +97,7 @@ func TestMetricToPointInt64(t *testing.T) {
 	}
 	got, err := metricToPoints(&timeseries)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto")
+		t.Errorf("Error converting metric to timeseries proto: %v", err)
 	}
 	comparePoints(t, intPoints, got)
 }
@@ -104,39 +108,47 @@ func TestMetricToPointDouble64(t *testing.T) {
 	}
 	got, err := metricToPoints(&timeseries)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto")
+		t.Errorf("Error converting metric to timeseries proto: %v", err)
 	}
 	comparePoints(t, doublePoints, got)
 }
 
-func TestMetricToLabelValues(t *testing.T) {
-	timeseries := metricdata.TimeSeries{
-		LabelValues: []metricdata.LabelValue{
-			metricdata.NewLabelValue(dummyLabelVal),
-		},
+func TestMetricToPointSummary(t *testing.T) {
+	snapshot := metricdata.Snapshot{
+		Count:       0,
+		Sum:         0,
+		Percentiles: map[float64]float64{},
 	}
-	got := metricToLabelValues(&timeseries)
-	compareLabelVals(t, labelVals, got)
+
+	sumVal := &metricdata.Summary{
+		Count:          intVal,
+		Sum:            doubleVal,
+		HasCountAndSum: true,
+		Snapshot:       snapshot,
+	}
+
+	timeseries := metricdata.TimeSeries{
+		Points: []metricdata.Point{metricdata.NewSummaryPoint(timeNow, sumVal)},
+	}
+
+	got, err := metricToPoints(&timeseries)
+	if err != nil {
+		t.Errorf("Error converting metric to timeseries proto: %v", err)
+	}
+	comparePoints(t, summaryPoints, got)
+}
+
+func TestMetricToLabelValues(t *testing.T) {
+	got := metricToLabelValues(metric.TimeSeries[0])
+	compareLabelVals(t, labelValsProto, got)
 }
 
 func TestMetricToTimeSeries(t *testing.T) {
-	metric := metricdata.Metric{
-		TimeSeries: []*metricdata.TimeSeries{
-			&metricdata.TimeSeries{
-				LabelValues: []metricdata.LabelValue{
-					metricdata.NewLabelValue(dummyLabelVal),
-				},
-				Points:    []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
-				StartTime: timeNow,
-			},
-		},
-	}
-
-	got, err := metricToTimeSeries(&metric)
+	got, err := metricToTimeSeries(metric)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto")
+		t.Errorf("Error converting metric to timeseries proto: %v", err)
 	}
-	compareMetricTimeseries(t, timeseries, got)
+	compareMetricTimeseries(t, timeseriesProto, got)
 }
 
 func TestResourceToProto(t *testing.T) {
@@ -159,106 +171,32 @@ func TestResourceToProto(t *testing.T) {
 }
 
 func TestMetricToDescriptor(t *testing.T) {
-	metric := metricdata.Metric{
-		Descriptor: metricdata.Descriptor{
-			Name:        dummyName,
-			Description: dummyDesc,
-			Unit:        metricdata.Unit(dummyUnit),
-			Type:        metricdata.Type(dummyType),
-			LabelKeys: []metricdata.LabelKey{
-				metricdata.LabelKey{
-					Key:         dummyLabelKey,
-					Description: dummyKeyDesc,
-				},
-			},
-		},
-	}
-
-	got := metricToDescriptor(&metric)
-	compareMetricDesc(t, descriptor, got)
+	got := metricToDescriptor(metric)
+	compareMetricDesc(t, descriptorProto, got)
 }
 
 func TestMetricToLabelKeys(t *testing.T) {
-	metric := metricdata.Metric{
-		Descriptor: metricdata.Descriptor{
-			LabelKeys: []metricdata.LabelKey{
-				metricdata.LabelKey{
-					Key:         dummyLabelKey,
-					Description: dummyKeyDesc,
-				},
-			},
-		},
-	}
-	got := metricToLabelKeys(&metric)
-	compareLabelKeys(t, labelKeys, got)
+	got := metricToLabelKeys(metric)
+	compareLabelKeys(t, labelKeysProto, got)
 }
 
 func TestMetricToProto(t *testing.T) {
-	metric := metricdata.Metric{
-		Descriptor: metricdata.Descriptor{
-			Name:        dummyName,
-			Description: dummyDesc,
-			Unit:        metricdata.Unit(dummyUnit),
-			Type:        metricdata.Type(dummyType),
-			LabelKeys: []metricdata.LabelKey{
-				metricdata.LabelKey{
-					Key:         dummyLabelKey,
-					Description: dummyKeyDesc,
-				},
-			},
-		},
-		TimeSeries: []*metricdata.TimeSeries{
-			&metricdata.TimeSeries{
-				LabelValues: []metricdata.LabelValue{
-					metricdata.NewLabelValue(dummyLabelVal),
-				},
-				Points:    []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
-				StartTime: timeNow,
-			},
-		},
-	}
-
-	got, err := metricToProto(&metric)
+	got, err := metricToProto(metric)
 	if err != nil {
 		t.Errorf("Error converting metric to proto")
 	}
-	compareMetricTimeseries(t, dummyMetric.Timeseries, got.Timeseries)
-	compareMetricDesc(t, dummyMetric.GetMetricDescriptor(), got.GetMetricDescriptor())
+	compareMetricTimeseries(t, dummyMetricProto.Timeseries, got.Timeseries)
+	compareMetricDesc(t, dummyMetricProto.GetMetricDescriptor(), got.GetMetricDescriptor())
 }
 
 func TestMetricToServiceRequest(t *testing.T) {
-	metrics := []*metricdata.Metric{
-		&metricdata.Metric{
-			Descriptor: metricdata.Descriptor{
-				Name:        dummyName,
-				Description: dummyDesc,
-				Unit:        metricdata.Unit(dummyUnit),
-				Type:        metricdata.Type(dummyType),
-				LabelKeys: []metricdata.LabelKey{
-					metricdata.LabelKey{
-						Key:         dummyLabelKey,
-						Description: dummyKeyDesc,
-					},
-				},
-			},
-			TimeSeries: []*metricdata.TimeSeries{
-				&metricdata.TimeSeries{
-					LabelValues: []metricdata.LabelValue{
-						metricdata.NewLabelValue(dummyLabelVal),
-					},
-					Points:    []metricdata.Point{metricdata.NewInt64Point(timeNow, intVal)},
-					StartTime: timeNow,
-				},
-			},
-		},
-	}
 	got, err := metricsToServiceRequest(metrics)
 	if err != nil {
 		t.Errorf("Error converting metrics to service proto ")
 	}
-	for i := range dummyServiceRequest.Metrics {
-		compareMetricTimeseries(t, dummyServiceRequest.Metrics[i].Timeseries, got.Metrics[i].Timeseries)
-		compareMetricDesc(t, dummyServiceRequest.Metrics[i].GetMetricDescriptor(), got.Metrics[i].GetMetricDescriptor())
+	for i := range dummyServiceRequestProto.Metrics {
+		compareMetricTimeseries(t, dummyServiceRequestProto.Metrics[i].Timeseries, got.Metrics[i].Timeseries)
+		compareMetricDesc(t, dummyServiceRequestProto.Metrics[i].GetMetricDescriptor(), got.Metrics[i].GetMetricDescriptor())
 	}
 }
 
@@ -281,8 +219,11 @@ func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point) {
 			if val.DoubleValue != got[i].GetDoubleValue() {
 				t.Errorf("Metric to Points double failed, expected val %v, got %v", val.DoubleValue, got[i].GetDoubleValue())
 			}
+		case *v1.Point_SummaryValue:
+			if !reflect.DeepEqual(*want[i].GetSummaryValue(), *got[i].GetSummaryValue()) {
+				t.Errorf("Metric to Points summary failed, expected val %v, got %v", val.SummaryValue, got[i].GetSummaryValue())
+			}
 		}
-
 	}
 }
 
@@ -314,12 +255,12 @@ func compareMetricTimeseries(t *testing.T, want []*v1.TimeSeries, got []*v1.Time
 }
 
 func compareLabelKeys(t *testing.T, want []*v1.LabelKey, got []*v1.LabelKey) {
-	for i := range labelKeys {
-		if labelKeys[i].GetKey() != got[i].GetKey() {
+	for i := range want {
+		if want[i].GetKey() != got[i].GetKey() {
 			t.Errorf("Metric to Label Key failed, expected key %v, got %v", want[i].GetKey(), got[i].GetKey())
 		}
 
-		if labelKeys[i].GetDescription() != got[i].GetDescription() {
+		if want[i].GetDescription() != got[i].GetDescription() {
 			t.Errorf("Metric to Label Key failed, expected desc %v, got %v", want[i].GetDescription(), got[i].GetDescription())
 		}
 	}

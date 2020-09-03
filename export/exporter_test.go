@@ -4,16 +4,6 @@ import (
 	"testing"
 )
 
-var (
-	dummyIncludeFilter   = `.*`
-	dummyReportingPeriod = 1000
-
-	config = Config{
-		IncludeFilter:               dummyIncludeFilter,
-		reportingPeriodMilliseconds: dummyReportingPeriod,
-	}
-)
-
 func TestNewConfig(t *testing.T) {
 	got := NewConfig(dummyIncludeFilter, dummyReportingPeriod)
 
