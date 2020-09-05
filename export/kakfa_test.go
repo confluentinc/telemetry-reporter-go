@@ -141,7 +141,10 @@ func TestKafkaExportMetrics(t *testing.T) {
 	}
 
 	topics := []string{topicName}
-	consumer.SubscribeTopics(topics, nil)
+	if err = consumer.SubscribeTopics(topics, nil); err != nil {
+		t.Errorf("Couldn't subscribe to topic: %v", err)
+	}
+
 	message, err := consumer.ReadMessage(10 * time.Second)
 	if err != nil {
 		t.Errorf("Kafka Export Metrics Failed, couldn't consume message: %v", err)
@@ -152,7 +155,9 @@ func TestKafkaExportMetrics(t *testing.T) {
 		}
 
 		got := &v1.Metric{}
-		proto.Unmarshal(message.Value, got)
+		if err = proto.Unmarshal(message.Value, got); err != nil {
+			t.Errorf("Error unmarshalling consumed message: %v", err)
+		}
 
 		if !reflect.DeepEqual(want.MetricDescriptor, got.MetricDescriptor) {
 			t.Errorf("consumed metric and sent metric descriptor not equal for kafka export, expected val %v, got %v",
