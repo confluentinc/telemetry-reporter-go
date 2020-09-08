@@ -97,7 +97,7 @@ func TestMetricToPointInt64(t *testing.T) {
 	}
 	got, err := metricToPoints(&timeseries)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto: %v", err)
+		t.Fatalf("Error converting metric to timeseries proto: %v", err)
 	}
 	comparePoints(t, intPoints, got)
 }
@@ -108,7 +108,7 @@ func TestMetricToPointDouble64(t *testing.T) {
 	}
 	got, err := metricToPoints(&timeseries)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto: %v", err)
+		t.Fatalf("Error converting metric to timeseries proto: %v", err)
 	}
 	comparePoints(t, doublePoints, got)
 }
@@ -133,7 +133,7 @@ func TestMetricToPointSummary(t *testing.T) {
 
 	got, err := metricToPoints(&timeseries)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto: %v", err)
+		t.Fatalf("Error converting metric to timeseries proto: %v", err)
 	}
 	comparePoints(t, summaryPoints, got)
 }
@@ -146,7 +146,7 @@ func TestMetricToLabelValues(t *testing.T) {
 func TestMetricToTimeSeries(t *testing.T) {
 	got, err := metricToTimeSeries(metric)
 	if err != nil {
-		t.Errorf("Error converting metric to timeseries proto: %v", err)
+		t.Fatalf("Error converting metric to timeseries proto: %v", err)
 	}
 	compareMetricTimeseries(t, timeseriesProto, got)
 }
@@ -183,7 +183,7 @@ func TestMetricToLabelKeys(t *testing.T) {
 func TestMetricToProto(t *testing.T) {
 	got, err := metricToProto(metric)
 	if err != nil {
-		t.Errorf("Error converting metric to proto")
+		t.Fatalf("Error converting metric to proto: %v", err)
 	}
 	compareMetricTimeseries(t, dummyMetricProto.Timeseries, got.Timeseries)
 	compareMetricDesc(t, dummyMetricProto.GetMetricDescriptor(), got.GetMetricDescriptor())
@@ -192,7 +192,7 @@ func TestMetricToProto(t *testing.T) {
 func TestMetricToServiceRequest(t *testing.T) {
 	got, err := metricsToServiceRequest(metrics)
 	if err != nil {
-		t.Errorf("Error converting metrics to service proto ")
+		t.Fatalf("Error converting metrics to service proto: %v", err)
 	}
 	for i := range dummyServiceRequestProto.Metrics {
 		compareMetricTimeseries(t, dummyServiceRequestProto.Metrics[i].Timeseries, got.Metrics[i].Timeseries)
@@ -202,7 +202,7 @@ func TestMetricToServiceRequest(t *testing.T) {
 
 func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point) {
 	if len(want) != len(got) {
-		t.Errorf("Metric to Points int failed, expected length %v, got %v", len(want), len(got))
+		t.Fatalf("Metric to Points int failed, expected length %v, got %v", len(want), len(got))
 	}
 
 	for i := range want {
@@ -229,7 +229,7 @@ func comparePoints(t *testing.T, want []*v1.Point, got []*v1.Point) {
 
 func compareLabelVals(t *testing.T, want []*v1.LabelValue, got []*v1.LabelValue) {
 	if len(want) != len(got) {
-		t.Errorf("Metric to Label Values failed, expected length %v, got %v", len(want), len(got))
+		t.Fatalf("Metric to Label Values failed, expected length %v, got %v", len(want), len(got))
 	}
 
 	for i := range want {
@@ -255,6 +255,10 @@ func compareMetricTimeseries(t *testing.T, want []*v1.TimeSeries, got []*v1.Time
 }
 
 func compareLabelKeys(t *testing.T, want []*v1.LabelKey, got []*v1.LabelKey) {
+	if len(want) != len(got) {
+		t.Fatalf("Metric to Label Key failed, expected length %v, got %v", len(want), len(got))
+	}
+
 	for i := range want {
 		if want[i].GetKey() != got[i].GetKey() {
 			t.Errorf("Metric to Label Key failed, expected key %v, got %v", want[i].GetKey(), got[i].GetKey())

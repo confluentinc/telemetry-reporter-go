@@ -70,7 +70,7 @@ var (
 func TestNewKafka(t *testing.T) {
 	got, err := NewKafka(config, kafkaConfig, topicInfo)
 	if err != nil {
-		t.Errorf("Error creating new Kafka: %v", err)
+		t.Fatalf("Error creating new Kafka: %v", err)
 	}
 	got.Stop()
 
@@ -80,10 +80,10 @@ func TestNewKafka(t *testing.T) {
 
 func TestSetMessageFlushTime(t *testing.T) {
 	got, err := NewKafka(config, kafkaConfig, topicInfo)
-	defer got.Stop()
 	if err != nil {
-		t.Errorf("Error creating new Kafka: %v", err)
+		t.Fatalf("Error creating new Kafka: %v", err)
 	}
+	got.Stop()
 	got.SetMessageFlushTime(newFlushTime)
 
 	gotKafka := got.Exporter.(Kafka)
@@ -121,7 +121,7 @@ func TestKafkaExportMetrics(t *testing.T) {
 
 	producer, err := kafka.NewProducer(kafkaConfig)
 	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't create producer: %v", err)
+		t.Fatalf("Kafka Export Metrics Failed, couldn't create producer: %v", err)
 	}
 
 	exportKafka := Kafka{
@@ -132,17 +132,17 @@ func TestKafkaExportMetrics(t *testing.T) {
 
 	err = exportKafka.ExportMetrics(context.Background(), metrics)
 	if err != nil {
-		t.Errorf("Kafka Export Metrics Failed, couldn't export metrics: %v", err)
+		t.Fatalf("Kafka Export Metrics Failed, couldn't export metrics: %v", err)
 	}
 
 	consumer, err := kafka.NewConsumer(consumerConfig)
 	if err != nil {
-		t.Errorf("Failed to create new Kafka Consumer: %v", err)
+		t.Fatalf("Failed to create new Kafka Consumer: %v", err)
 	}
 
 	topics := []string{topicName}
 	if err = consumer.SubscribeTopics(topics, nil); err != nil {
-		t.Errorf("Couldn't subscribe to topic: %v", err)
+		t.Fatalf("Couldn't subscribe to topic: %v", err)
 	}
 
 	message, err := consumer.ReadMessage(10 * time.Second)
@@ -151,12 +151,12 @@ func TestKafkaExportMetrics(t *testing.T) {
 	} else {
 		want, err := metricToProto(metric)
 		if err != nil {
-			t.Errorf("Error converting metric to Proto: %v", err)
+			t.Fatalf("Error converting metric to Proto: %v", err)
 		}
 
 		got := &v1.Metric{}
 		if err = proto.Unmarshal(message.Value, got); err != nil {
-			t.Errorf("Error unmarshalling consumed message: %v", err)
+			t.Fatalf("Error unmarshalling consumed message: %v", err)
 		}
 
 		if !reflect.DeepEqual(want.MetricDescriptor, got.MetricDescriptor) {
@@ -178,12 +178,12 @@ func TestKafkaExportMetrics(t *testing.T) {
 func createDockerNetwork(t *testing.T, networkName string) (*client.Client, types.NetworkCreateResponse) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		t.Errorf("Failed to create Docker client: %v", err)
+		t.Fatalf("Failed to create Docker client: %v", err)
 	}
 
 	network, err := cli.NetworkCreate(context.Background(), networkName, types.NetworkCreate{})
 	if err != nil {
-		t.Errorf("Failed to create Docker network: %v", err)
+		t.Fatalf("Failed to create Docker network: %v", err)
 	}
 
 	return cli, network
@@ -214,7 +214,7 @@ func startZookeeperContainer(t *testing.T, image string, containerName string, n
 	})
 
 	if err != nil {
-		t.Errorf("Failed to start zookeeper container: %v", err)
+		t.Fatalf("Failed to start zookeeper container: %v", err)
 	}
 
 	return zookeeper
@@ -231,7 +231,7 @@ func startKafkaContainer(
 ) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:        image,
-		ExposedPorts: []string{"127.0.0.1:" + port + ":" + port},
+		ExposedPorts: []string{listenerIP + ":" + port + ":" + port},
 		WaitingFor:   wait.ForListeningPort(nat.Port(port)),
 		Networks:     []string{network},
 		Env: map[string]string{
@@ -255,7 +255,7 @@ func startKafkaContainer(
 	})
 
 	if err != nil {
-		t.Errorf("Failed to start kafka container: %v", err)
+		t.Fatalf("Failed to start kafka container: %v", err)
 	}
 
 	return kafkaServer
@@ -264,7 +264,7 @@ func startKafkaContainer(
 func getKafkaConfig(t *testing.T, kafkaServer testcontainers.Container, kafkaPort string) *kafka.ConfigMap {
 	port, err := kafkaServer.PortEndpoint(context.Background(), nat.Port(kafkaPort), "")
 	if err != nil {
-		t.Errorf("Failed to get kafka server container's port: %v", err)
+		t.Fatalf("Failed to get kafka server container's port: %v", err)
 	}
 
 	kafkaConfig := &kafka.ConfigMap{

@@ -54,7 +54,7 @@ func TestHTTPExportMetrics(t *testing.T) {
 
 		want, err := proto.Marshal(metricsRequest)
 		if err != nil {
-			t.Errorf("Marshalling error: %v", err)
+			t.Fatalf("Marshalling error: %v", err)
 		}
 
 		if res := bytes.Compare(got, want); res != 0 {
